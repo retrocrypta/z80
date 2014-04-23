@@ -1,0 +1,39 @@
+To compile you need:
+- GNU C compiler and linker
+- SDL (http://www.libsdl.org) library installed
+
+To build look into Makefile and make adjustments,
+then issue "make" (or "gmake").
+
+The binary files are in the subdirectory bin, so
+you should be able to run e.g. the Colour Genie
+with "bin/cgenie".
+
+The option -h gives a short help.
+
+The resource files are in subdirectories trs80 and cgenie.
+
+Files in ./trs80:
+	+ trs80.rom		12K BASIC ROM
+	+ trs80.chr		1K character generator
+	Files in ./trs80/cas
+		+ file.cas	cassette image file
+		...
+	Files in ./trs80/fd
+		+ fd0.img	first floppy image (NEWDOS-80)
+		+ fd1.img	second floppy image
+
+Files in ./cgenie:
+	+ cgenie.rom		16K BASIC ROM
+	+ cgenie.chr		2K character generator
+	+ cgdos.rom		8K DOS extension ROM
+	+ cgenie.def		disassembler (dz80) control file
+	Files in ./cgenie/cas
+		+ file.cas	cassette image file
+		...
+	Files in ./cgenie/fd
+		+ fd0.img	first floppy image
+		+ fd1.img	second floppy image
+		...
+
+FIXME: continue
