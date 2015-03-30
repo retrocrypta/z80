@@ -1068,6 +1068,7 @@ static void cgenie_frame(uint32_t param)
 	memset(colour_ram_dirty, 0, COLOUR_RAM_SIZE/8);
 	dirty_all = 0;
 
+	/* add flicker caused by accessing the character generator RAM */
 	if (screen_w > 0 && char_h > 0 && conflict_cnt > 0) {
 		uint32_t white = osd_color(frame, 255, 255, 255);
 		for (n = 0; n < conflict_cnt; n++) {
