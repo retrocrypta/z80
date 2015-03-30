@@ -321,7 +321,7 @@ int32_t mc6845_w(uint32_t chip, uint32_t offset, uint8_t data)
 	mc6845_t *crtc = &mc6845[chip];
 	mc6845_cursor_t cursor;
 	uint8_t mask;
-	uint32_t n, frame_base_old;
+	uint32_t n;
 
 	if (0 == (offset & 1)) {
 		/* change the idx register */
@@ -333,8 +333,6 @@ int32_t mc6845_w(uint32_t chip, uint32_t offset, uint8_t data)
 	n = crtc->ndx & 0x1f;
 	if (n >= CRTC6845_REGS)
 		return -1;
-
-	frame_base_old = mc6845_get_start(chip);
 
 	mask = mc6845_reg_mask[crtc->ifc.type][n].store_mask;
 
@@ -355,10 +353,11 @@ int32_t mc6845_w(uint32_t chip, uint32_t offset, uint8_t data)
 		if (NULL != crtc->ifc.cursor_changed)
 			(*crtc->ifc.cursor_changed)(chip, &cursor);
 		break;
+
+	/* video address change is handled in cgenie_frame
+	 * if (frame_base_new != frame_base_old) ... */
 	case 0x0c:
 	case 0x0d:
-		if (NULL != crtc->ifc.video_addr_changed)
-			(*crtc->ifc.video_addr_changed)(chip, frame_base_old, mc6845_get_start(chip));
 		break;
 
 	default:

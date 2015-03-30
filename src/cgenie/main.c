@@ -55,7 +55,7 @@ const char cgenie_chr[] = "cgenie.chr";
 #define	EXT_ROM_SIZE	0x1000
 
 /** @brief Video RAM dirty flags */
-static uint8_t *video_ram_dirty;
+static uint32_t *video_ram_dirty;
 
 /** @brief Colour RAM dirty flags */
 static uint32_t *colour_ram_dirty;
@@ -112,6 +112,9 @@ static uint32_t gfx_mode;
 
 /** @brief character generator base address (0x00 or 0x80) */
 static uint32_t font_base[4];
+
+/** @brief frame buffer offset - old */
+static uint32_t frame_base_old;
 
 /** @brief character generator raw data */
 static uint8_t chargen[256 * 8];
@@ -216,9 +219,9 @@ typedef enum {
 /***************************************************************************
  * forward declarations
  ***************************************************************************/
-static __inline void set_video_ram_dirty(uint32_t offset);
-static __inline void res_video_ram_dirty(uint32_t offset);
-static __inline int get_video_ram_dirty(uint32_t offset);
+static __inline void set_video_ram_dirty(uint32_t offset, uint32_t mask);
+static __inline void res_video_ram_dirty(uint32_t offset, uint32_t mask);
+static __inline int get_video_ram_dirty(uint32_t offset, uint32_t mask);
 static __inline void set_colour_ram_dirty(uint32_t offset, uint32_t mask);
 static __inline void res_colour_ram_dirty(uint32_t offset, uint32_t mask);
 static __inline int get_colour_ram_dirty(uint32_t offset, uint32_t mask);
@@ -244,7 +247,6 @@ static void wr_fdc(uint32_t offset, uint8_t data);
 static uint8_t rd_port(uint32_t offset);
 static void wr_port(uint32_t offset, uint8_t data);
 static void cgenie_cursor(uint32_t chip, mc6845_cursor_t *cursor);
-static void cgenie_video_addr(uint32_t chip, uint32_t frame_base_old, uint32_t frame_base_new);
 static void video_text(void);
 static void video_graphics(void);
 static int cgenie_resize(int32_t w, int32_t h);
@@ -343,8 +345,7 @@ void (*wr_io[L1SIZE])(uint32_t offset, uint8_t data) = {
 static ifc6845_t mc6845 = {
 	M6845_TYPE_GENUINE,
 	14380000,
-	cgenie_cursor,
-	cgenie_video_addr
+	cgenie_cursor
 };
 
 /** @brief AY8910 audio chip interface structure */
@@ -450,24 +451,27 @@ void sys_cpu_panel_update(void *bitmap)
 }
 
 /** @brief mark a video RAM location dirty */
-static __inline void set_video_ram_dirty(uint32_t offset)
+static __inline void set_video_ram_dirty(uint32_t offset, uint32_t mask)
 {
 	uint32_t o = offset % VIDEO_RAM_SIZE;
-	video_ram_dirty[o] = 1;
+	uint32_t b = o % 32;
+	video_ram_dirty[o / 32] |= mask << b;
 }
 
 /** @brief mark a video RAM location clean */
-static __inline void res_video_ram_dirty(uint32_t offset)
+static __inline void res_video_ram_dirty(uint32_t offset, uint32_t mask)
 {
 	uint32_t o = offset % VIDEO_RAM_SIZE;
-	video_ram_dirty[o] = 0;
+	uint32_t b = o % 32;
+	video_ram_dirty[o / 32] &= ~(mask << b);
 }
 
 /** @brief get a video RAM location dirty flag */
-static __inline int get_video_ram_dirty(uint32_t offset)
+static __inline int get_video_ram_dirty(uint32_t offset, uint32_t mask)
 {
 	uint32_t o = offset % VIDEO_RAM_SIZE;
-	return (dirty_all || video_ram_dirty[o]);
+	uint32_t b = o % 32;
+	return ((dirty_all | video_ram_dirty[o / 32]) & (mask << b)) ? 1 : 0;
 }
 
 /** @brief mark a colour RAM location dirty */
@@ -553,7 +557,7 @@ static void video_font_base(uint32_t which, uint32_t base)
 	which *= 64;
 	for (i = 0; i < size; i++, offs = (offs + 1) % VIDEO_RAM_SIZE) {
 		if (which == (mem[VIDEO_RAM_BASE + offs] & 0xc0))
-			set_video_ram_dirty(offs);
+			set_video_ram_dirty(offs, 1);
 	}
 }
 
@@ -686,7 +690,7 @@ static void wr_vid(uint32_t offset, uint8_t data)
 	if (data == mem[offset])
 		return;
 	mem[offset] = data;
-	set_video_ram_dirty(offset);
+	set_video_ram_dirty(offset,1);
 }
 
 /** @brief write to memory mapped I/O range (floppy disc motors and controller) */
@@ -817,26 +821,9 @@ static void cgenie_cursor(uint32_t chip, mc6845_cursor_t *cursor)
 {
 	(void)chip;
 	if (cursor->pos < VIDEO_RAM_SIZE)
-		set_video_ram_dirty(cursor->pos);
+		set_video_ram_dirty(cursor->pos,1);
 }
 
-static void cgenie_video_addr(uint32_t chip, uint32_t frame_base_old, uint32_t frame_base_new)
-{
-	(void)chip;
-	uint32_t i, size;
-
-	size = mc6845_get_char_lines(0) * mc6845_get_char_columns(0);
-	/* if the video base offset changed, mark dirty changes */
-	if (frame_base_new != frame_base_old) {
-		for (i = 0; i < size; i++) {
-			uint32_t o0 = (frame_base_old + i) % VIDEO_RAM_SIZE;
-			uint32_t o1 = (frame_base_new + i) % VIDEO_RAM_SIZE;
-			if (mem[VIDEO_RAM_BASE + o0] == mem[VIDEO_RAM_BASE + o1])
-				continue;
-			set_video_ram_dirty(o1);
-		}
-	}
-}
 
 static void video_text(void)
 {
@@ -857,11 +844,11 @@ static void video_text(void)
 	for (y = 0; y < screen_h; y++) {
 		y0 = screen_y + y * font_h;
 		for (x = 0; x < screen_w; x++, offs = (offs + 1) % VIDEO_RAM_SIZE) {
-			if (0 == get_video_ram_dirty(offs) &&
+			if (0 == get_video_ram_dirty(offs,1) &&
 				0 == get_colour_ram_dirty(offs,1))
 				continue;
 			x0 = screen_x + x * font_w;
-			res_video_ram_dirty(offs);
+			res_video_ram_dirty(offs,1);
 			data = mem[VIDEO_RAM_BASE + offs];
 			data = data + font_base[data / 64];
 			attr = mem[COLOUR_RAM_BASE + offs % COLOUR_RAM_SIZE] % 16;
@@ -871,7 +858,7 @@ static void video_text(void)
 				continue;
 			if (offs != cursor.pos)
 				continue;
-			set_video_ram_dirty(offs);
+			set_video_ram_dirty(offs,1);
 			ct = cursor.top * font_h / char_h;
 			ch = (cursor.bottom + 1 - cursor.top) * font_h / char_h;
 			px = osd_color(frame, osd_get_r(pal2[1]), osd_get_g(pal2[1]), osd_get_b(pal2[1]));
@@ -897,9 +884,9 @@ static void video_graphics(void)
 	for (y = 0; y < screen_h * h; y += h) {
 		y0 = screen_y + y;
 		for (x = 0; x < screen_w; x++, offs = (offs + 1) % VIDEO_RAM_SIZE) {
-			if (0 == get_video_ram_dirty(offs))
+			if (0 == get_video_ram_dirty(offs,1))
 				continue;
-			res_video_ram_dirty(offs);
+			res_video_ram_dirty(offs,1);
 			x0 = screen_x + x * font_w;
 			data = mem[VIDEO_RAM_BASE + offs];
 			osd_fillrect(frame, x0 + 0*w, y0, w, h, pal[(data >> 6) & 3]);
@@ -966,7 +953,7 @@ static int cgenie_resize(int32_t w, int32_t h)
 static void cgenie_frame(uint32_t param)
 {
 	static uint32_t changecnt;
-	uint32_t ch, i, n, size, frame_base;
+	uint32_t ch, i, n, size, frame_base_new;
 
 	ay8910_update_stream();
 
@@ -1022,7 +1009,7 @@ static void cgenie_frame(uint32_t param)
 		}
 	}
 
-	frame_base = mc6845_get_start(0);
+	frame_base_new = mc6845_get_start(0);
 	size = mc6845_get_char_lines(0) * mc6845_get_char_columns(0);
 
 	/* render modified character generator codes */
@@ -1042,11 +1029,23 @@ static void cgenie_frame(uint32_t param)
 			1,		/* bits per pixel */
 			NULL);		/* palette */
 		for (i = 0; i < size; i++) {
-			uint32_t o1 = (frame_base + i) % VIDEO_RAM_SIZE;
+			uint32_t o1 = (frame_base_new + i) % VIDEO_RAM_SIZE;
 			if (128 + ch != mem[VIDEO_RAM_BASE + o1])
 				continue;
-			set_video_ram_dirty(o1);
+			set_video_ram_dirty(o1,1);
 		}
+	}
+
+	/* if the video base offset changed, mark dirty changes */
+	if (frame_base_new != frame_base_old) {
+		for (i = 0; i < size; i++) {
+			uint32_t o0 = (frame_base_old + i) % VIDEO_RAM_SIZE;
+			uint32_t o1 = (frame_base_new + i) % VIDEO_RAM_SIZE;
+			if (mem[VIDEO_RAM_BASE + o0] == mem[VIDEO_RAM_BASE + o1])
+				continue;
+			set_video_ram_dirty(o1,1);
+		}
+		frame_base_old = frame_base_new;
 	}
 
 	if (dirty_all) {
@@ -1087,7 +1086,7 @@ static void cgenie_frame(uint32_t param)
 				continue;
 			osd_fillrect(NULL, x0, y0, w, h, white);
 			osd_fillrect(frame, x0, y0, w, h, white);
-			set_video_ram_dirty(addr);
+			set_video_ram_dirty(addr, 1);
 		}
 	}
 	conflict_cnt = 0;
@@ -1112,7 +1111,7 @@ static int cgenie_screen(void)
 	fread(chargen, 1, sizeof(chargen), fp);
 	fclose(fp);
 
-	video_ram_dirty = malloc(VIDEO_RAM_SIZE);
+	video_ram_dirty = malloc(VIDEO_RAM_SIZE / 8);
 	if (NULL == video_ram_dirty)
 		return -1;
 
