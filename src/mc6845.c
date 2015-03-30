@@ -354,6 +354,12 @@ int32_t mc6845_w(uint32_t chip, uint32_t offset, uint8_t data)
 			(*crtc->ifc.cursor_changed)(chip, &cursor);
 		break;
 
+	/* video address change is handled in cgenie_frame
+	 * if (frame_base_new != frame_base_old) ... */
+	case 0x0c:
+	case 0x0d:
+		break;
+
 	default:
 		sys_set_full_refresh();
 		break;
