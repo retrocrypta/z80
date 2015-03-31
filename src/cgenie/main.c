@@ -113,9 +113,6 @@ static uint32_t gfx_mode;
 /** @brief character generator base address (0x00 or 0x80) */
 static uint32_t font_base[4];
 
-/** @brief frame buffer offset - old */
-static uint32_t frame_base_old;
-
 /** @brief character generator raw data */
 static uint8_t chargen[256 * 8];
 
@@ -247,6 +244,7 @@ static void wr_fdc(uint32_t offset, uint8_t data);
 static uint8_t rd_port(uint32_t offset);
 static void wr_port(uint32_t offset, uint8_t data);
 static void cgenie_cursor(uint32_t chip, mc6845_cursor_t *cursor);
+static void cgenie_video_addr(uint32_t chip, uint32_t frame_base_old, uint32_t frame_base_new);
 static void video_text(void);
 static void video_graphics(void);
 static int cgenie_resize(int32_t w, int32_t h);
@@ -345,7 +343,8 @@ void (*wr_io[L1SIZE])(uint32_t offset, uint8_t data) = {
 static ifc6845_t mc6845 = {
 	M6845_TYPE_GENUINE,
 	14380000,
-	cgenie_cursor
+	cgenie_cursor,
+	cgenie_video_addr
 };
 
 /** @brief AY8910 audio chip interface structure */
@@ -824,6 +823,27 @@ static void cgenie_cursor(uint32_t chip, mc6845_cursor_t *cursor)
 		set_video_ram_dirty(cursor->pos,1);
 }
 
+static void cgenie_video_addr(uint32_t chip, uint32_t frame_base_old, uint32_t frame_base_new)
+{
+	(void)chip;
+	uint32_t i, size;
+
+	size = mc6845_get_char_lines(chip) * mc6845_get_char_columns(chip);
+	/* if the video base offset changed, mark dirty changes */
+	if (frame_base_new != frame_base_old) {
+		for (i = 0; i < size; i++) {
+			uint32_t o0 = (frame_base_old + i) % VIDEO_RAM_SIZE;
+			uint32_t o1 = (frame_base_new + i) % VIDEO_RAM_SIZE;
+			if (mem[VIDEO_RAM_BASE + o0] != mem[VIDEO_RAM_BASE + o1])
+				set_video_ram_dirty(o1, 1);
+			/* for text mode mark colour dirties */
+			if (gfx_mode == 0 &&
+				(mem[COLOUR_RAM_BASE + o0 % COLOUR_RAM_SIZE] % 16) !=
+				(mem[COLOUR_RAM_BASE + o1 % COLOUR_RAM_SIZE] % 16))
+					set_colour_ram_dirty(o1, 1);
+		}
+	}
+}
 
 static void video_text(void)
 {
@@ -953,7 +973,7 @@ static int cgenie_resize(int32_t w, int32_t h)
 static void cgenie_frame(uint32_t param)
 {
 	static uint32_t changecnt;
-	uint32_t ch, i, n, size, frame_base_new;
+	uint32_t ch, i, n, size, frame_base;
 
 	ay8910_update_stream();
 
@@ -1009,7 +1029,7 @@ static void cgenie_frame(uint32_t param)
 		}
 	}
 
-	frame_base_new = mc6845_get_start(0);
+	frame_base = mc6845_get_start(0);
 	size = mc6845_get_char_lines(0) * mc6845_get_char_columns(0);
 
 	/* render modified character generator codes */
@@ -1029,23 +1049,11 @@ static void cgenie_frame(uint32_t param)
 			1,		/* bits per pixel */
 			NULL);		/* palette */
 		for (i = 0; i < size; i++) {
-			uint32_t o1 = (frame_base_new + i) % VIDEO_RAM_SIZE;
+			uint32_t o1 = (frame_base + i) % VIDEO_RAM_SIZE;
 			if (128 + ch != mem[VIDEO_RAM_BASE + o1])
 				continue;
 			set_video_ram_dirty(o1,1);
 		}
-	}
-
-	/* if the video base offset changed, mark dirty changes */
-	if (frame_base_new != frame_base_old) {
-		for (i = 0; i < size; i++) {
-			uint32_t o0 = (frame_base_old + i) % VIDEO_RAM_SIZE;
-			uint32_t o1 = (frame_base_new + i) % VIDEO_RAM_SIZE;
-			if (mem[VIDEO_RAM_BASE + o0] == mem[VIDEO_RAM_BASE + o1])
-				continue;
-			set_video_ram_dirty(o1,1);
-		}
-		frame_base_old = frame_base_new;
 	}
 
 	if (dirty_all) {
