@@ -52,7 +52,7 @@ typedef struct ifc6845_s {
 	uint32_t type;
 	uint32_t freq;
 	void (*cursor_changed)(uint32_t chip, mc6845_cursor_t *old);
-	void (*video_addr_changed)(uint32_t chip, uint32_t frame_base_old, uint32_t frame_base_new);
+	uint32_t (*video_addr_changed)(uint32_t chip, uint32_t frame_base_old, uint32_t frame_base_new);
 }	ifc6845_t;
 
 /****************************************************************************

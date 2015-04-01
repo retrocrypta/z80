@@ -244,7 +244,7 @@ static void wr_fdc(uint32_t offset, uint8_t data);
 static uint8_t rd_port(uint32_t offset);
 static void wr_port(uint32_t offset, uint8_t data);
 static void cgenie_cursor(uint32_t chip, mc6845_cursor_t *cursor);
-static void cgenie_video_addr(uint32_t chip, uint32_t frame_base_old, uint32_t frame_base_new);
+static uint32_t cgenie_video_addr(uint32_t chip, uint32_t frame_base_old, uint32_t frame_base_new);
 static void video_text(void);
 static void video_graphics(void);
 static int cgenie_resize(int32_t w, int32_t h);
@@ -823,7 +823,7 @@ static void cgenie_cursor(uint32_t chip, mc6845_cursor_t *cursor)
 		set_video_ram_dirty(cursor->pos,1);
 }
 
-static void cgenie_video_addr(uint32_t chip, uint32_t frame_base_old, uint32_t frame_base_new)
+static uint32_t cgenie_video_addr(uint32_t chip, uint32_t frame_base_old, uint32_t frame_base_new)
 {
 	(void)chip;
 	uint32_t i, size;
@@ -843,6 +843,7 @@ static void cgenie_video_addr(uint32_t chip, uint32_t frame_base_old, uint32_t f
 					set_colour_ram_dirty(o1, 1);
 		}
 	}
+	return 0;
 }
 
 static void video_text(void)
