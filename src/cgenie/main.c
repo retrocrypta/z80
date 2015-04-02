@@ -216,15 +216,15 @@ typedef enum {
 /***************************************************************************
  * forward declarations
  ***************************************************************************/
-static __inline void set_video_ram_dirty(uint32_t offset, uint32_t mask);
-static __inline void res_video_ram_dirty(uint32_t offset, uint32_t mask);
-static __inline int get_video_ram_dirty(uint32_t offset, uint32_t mask);
-static __inline void set_colour_ram_dirty(uint32_t offset, uint32_t mask);
-static __inline void res_colour_ram_dirty(uint32_t offset, uint32_t mask);
-static __inline int get_colour_ram_dirty(uint32_t offset, uint32_t mask);
-static __inline void set_font_ram_dirty(uint32_t offset, uint32_t mask);
-static __inline void res_font_ram_dirty(uint32_t offset, uint32_t mask);
-static __inline int get_font_ram_dirty(uint32_t offset, uint32_t mask);
+static __inline void set_video_ram_dirty(uint32_t offset);
+static __inline void res_video_ram_dirty(uint32_t offset);
+static __inline int get_video_ram_dirty(uint32_t offset);
+static __inline void set_colour_ram_dirty(uint32_t offset);
+static __inline void res_colour_ram_dirty(uint32_t offset);
+static __inline int get_colour_ram_dirty(uint32_t offset);
+static __inline void set_font_ram_dirty(uint32_t offset);
+static __inline void res_font_ram_dirty(uint32_t offset);
+static __inline int get_font_ram_dirty(uint32_t offset);
 static void video_bgd(uint8_t r, uint8_t g, uint8_t b);
 static void video_font_base(uint32_t which, uint32_t base);
 static void video_mode(uint32_t enable);
@@ -450,75 +450,75 @@ void sys_cpu_panel_update(void *bitmap)
 }
 
 /** @brief mark a video RAM location dirty */
-static __inline void set_video_ram_dirty(uint32_t offset, uint32_t mask)
+static __inline void set_video_ram_dirty(uint32_t offset)
 {
 	uint32_t o = offset % VIDEO_RAM_SIZE;
 	uint32_t b = o % 32;
-	video_ram_dirty[o / 32] |= mask << b;
+	video_ram_dirty[o / 32] |= (1 << b);
 }
 
 /** @brief mark a video RAM location clean */
-static __inline void res_video_ram_dirty(uint32_t offset, uint32_t mask)
+static __inline void res_video_ram_dirty(uint32_t offset)
 {
 	uint32_t o = offset % VIDEO_RAM_SIZE;
 	uint32_t b = o % 32;
-	video_ram_dirty[o / 32] &= ~(mask << b);
+	video_ram_dirty[o / 32] &= ~(1 << b);
 }
 
 /** @brief get a video RAM location dirty flag */
-static __inline int get_video_ram_dirty(uint32_t offset, uint32_t mask)
+static __inline int get_video_ram_dirty(uint32_t offset)
 {
 	uint32_t o = offset % VIDEO_RAM_SIZE;
 	uint32_t b = o % 32;
-	return ((dirty_all | video_ram_dirty[o / 32]) & (mask << b)) ? 1 : 0;
+	return ((dirty_all | video_ram_dirty[o / 32]) & (1 << b)) ? 1 : 0;
 }
 
 /** @brief mark a colour RAM location dirty */
-static __inline void set_colour_ram_dirty(uint32_t offset, uint32_t mask)
+static __inline void set_colour_ram_dirty(uint32_t offset)
 {
 	uint32_t o = offset % COLOUR_RAM_SIZE;
 	uint32_t b = o % 32;
-	colour_ram_dirty[o / 32] |= mask << b;
+	colour_ram_dirty[o / 32] |= (1 << b);
 }
 
 /** @brief mark a colour RAM location clean */
-static __inline void res_colour_ram_dirty(uint32_t offset, uint32_t mask)
+static __inline void res_colour_ram_dirty(uint32_t offset)
 {
 	uint32_t o = offset % COLOUR_RAM_SIZE;
 	uint32_t b = o % 32;
-	colour_ram_dirty[o / 32] &= ~(mask << b);
+	colour_ram_dirty[o / 32] &= ~(1 << b);
 }
 
 /** @brief get a colour RAM location dirty flag */
-static __inline int get_colour_ram_dirty(uint32_t offset, uint32_t mask)
+static __inline int get_colour_ram_dirty(uint32_t offset)
 {
 	uint32_t o = offset % COLOUR_RAM_SIZE;
 	uint32_t b = o % 32;
-	return ((dirty_all | colour_ram_dirty[o / 32]) & (mask << b)) ? 1 : 0;
+	return ((dirty_all | colour_ram_dirty[o / 32]) & (1 << b)) ? 1 : 0;
 }
 
 /** @brief mark a font RAM location dirty */
-static __inline void set_font_ram_dirty(uint32_t offset, uint32_t mask)
+static __inline void set_font_ram_dirty(uint32_t offset)
 {
 	uint32_t o = offset % 128;
 	uint32_t b = o % 32;
-	font_ram_dirty[o / 32] |= mask << b;
+	font_ram_dirty[o / 32] |= (1 << b);
 }
 
 /** @brief mark a font RAM location clean */
-static __inline void res_font_ram_dirty(uint32_t offset, uint32_t mask)
+static __inline void res_font_ram_dirty(uint32_t offset)
 {
 	uint32_t o = offset % 128;
 	uint32_t b = o % 32;
-	font_ram_dirty[o / 32] &= ~(mask << b);
+	font_ram_dirty[o / 32] &= ~(1 << b);
 }
 
 /** @brief get a font RAM location dirty flag */
-static __inline int get_font_ram_dirty(uint32_t offset, uint32_t mask)
+static __inline int get_font_ram_dirty(uint32_t offset)
 {
 	uint32_t o = offset % 128;
 	uint32_t b = o % 32;
-	return ((dirty_all | font_ram_dirty[o / 32]) & (mask << b)) ? 1 : 0;
+	return ((dirty_all | font_ram_dirty[o / 32]) & (1 << b)) ? 1 : 0;
 }
 
 /** @brief simulate a bus conflict when accessing the character generator RAM */
@@ -556,7 +556,7 @@ static void video_font_base(uint32_t which, uint32_t base)
 	which *= 64;
 	for (i = 0; i < size; i++, offs = (offs + 1) % VIDEO_RAM_SIZE) {
 		if (which == (mem[VIDEO_RAM_BASE + offs] & 0xc0))
-			set_video_ram_dirty(offs, 1);
+			set_video_ram_dirty(offs);
 	}
 }
 
@@ -670,7 +670,7 @@ static void wr_col(uint32_t offset, uint8_t data)
 	if (data == mem[offset])
 		return;
 	mem[offset] = data;
-	set_colour_ram_dirty(offset, 1);
+	set_colour_ram_dirty(offset);
 }
 
 /** @brief write to character generator RAM */
@@ -680,7 +680,7 @@ static void wr_chr(uint32_t offset, uint8_t data)
 	if (data == mem[offset])
 		return;
 	mem[offset] = data;
-	set_font_ram_dirty(offset/8,1);
+	set_font_ram_dirty(offset/8);
 }
 
 /** @brief write to video RAM address */
@@ -689,7 +689,7 @@ static void wr_vid(uint32_t offset, uint8_t data)
 	if (data == mem[offset])
 		return;
 	mem[offset] = data;
-	set_video_ram_dirty(offset,1);
+	set_video_ram_dirty(offset);
 }
 
 /** @brief write to memory mapped I/O range (floppy disc motors and controller) */
@@ -820,7 +820,7 @@ static void cgenie_cursor(uint32_t chip, mc6845_cursor_t *cursor)
 {
 	(void)chip;
 	if (cursor->pos < VIDEO_RAM_SIZE)
-		set_video_ram_dirty(cursor->pos,1);
+		set_video_ram_dirty(cursor->pos);
 }
 
 static uint32_t cgenie_video_addr(uint32_t chip, uint32_t frame_base_old, uint32_t frame_base_new)
@@ -835,12 +835,12 @@ static uint32_t cgenie_video_addr(uint32_t chip, uint32_t frame_base_old, uint32
 			uint32_t o0 = (frame_base_old + i) % VIDEO_RAM_SIZE;
 			uint32_t o1 = (frame_base_new + i) % VIDEO_RAM_SIZE;
 			if (mem[VIDEO_RAM_BASE + o0] != mem[VIDEO_RAM_BASE + o1])
-				set_video_ram_dirty(o1, 1);
+				set_video_ram_dirty(o1);
 			/* for text mode mark colour dirties */
 			if (gfx_mode == 0 &&
 				(mem[COLOUR_RAM_BASE + o0 % COLOUR_RAM_SIZE] % 16) !=
 				(mem[COLOUR_RAM_BASE + o1 % COLOUR_RAM_SIZE] % 16))
-					set_colour_ram_dirty(o1, 1);
+					set_colour_ram_dirty(o1);
 		}
 	}
 	return 0;
@@ -865,11 +865,11 @@ static void video_text(void)
 	for (y = 0; y < screen_h; y++) {
 		y0 = screen_y + y * font_h;
 		for (x = 0; x < screen_w; x++, offs = (offs + 1) % VIDEO_RAM_SIZE) {
-			if (0 == get_video_ram_dirty(offs,1) &&
-				0 == get_colour_ram_dirty(offs,1))
+			if (0 == get_video_ram_dirty(offs) &&
+				0 == get_colour_ram_dirty(offs))
 				continue;
 			x0 = screen_x + x * font_w;
-			res_video_ram_dirty(offs,1);
+			res_video_ram_dirty(offs);
 			data = mem[VIDEO_RAM_BASE + offs];
 			data = data + font_base[data / 64];
 			attr = mem[COLOUR_RAM_BASE + offs % COLOUR_RAM_SIZE] % 16;
@@ -879,7 +879,7 @@ static void video_text(void)
 				continue;
 			if (offs != cursor.pos)
 				continue;
-			set_video_ram_dirty(offs,1);
+			set_video_ram_dirty(offs);
 			ct = cursor.top * font_h / char_h;
 			ch = (cursor.bottom + 1 - cursor.top) * font_h / char_h;
 			px = osd_color(frame, osd_get_r(pal2[1]), osd_get_g(pal2[1]), osd_get_b(pal2[1]));
@@ -905,9 +905,9 @@ static void video_graphics(void)
 	for (y = 0; y < screen_h * h; y += h) {
 		y0 = screen_y + y;
 		for (x = 0; x < screen_w; x++, offs = (offs + 1) % VIDEO_RAM_SIZE) {
-			if (0 == get_video_ram_dirty(offs,1))
+			if (0 == get_video_ram_dirty(offs))
 				continue;
-			res_video_ram_dirty(offs,1);
+			res_video_ram_dirty(offs);
 			x0 = screen_x + x * font_w;
 			data = mem[VIDEO_RAM_BASE + offs];
 			osd_fillrect(frame, x0 + 0*w, y0, w, h, pal[(data >> 6) & 3]);
@@ -1035,9 +1035,9 @@ static void cgenie_frame(uint32_t param)
 
 	/* render modified character generator codes */
 	for (ch = 0; ch < 128; ch++) {
-		if (0 == get_font_ram_dirty(ch, 1))
+		if (0 == get_font_ram_dirty(ch))
 			continue;
-		res_font_ram_dirty(ch, 1);
+		res_font_ram_dirty(ch);
 		osd_render_font(font,
 			&mem[FONT_RAM_BASE + FONT_H * ch],
 			256 + ch,	/* first code */
@@ -1053,7 +1053,7 @@ static void cgenie_frame(uint32_t param)
 			uint32_t o1 = (frame_base + i) % VIDEO_RAM_SIZE;
 			if (128 + ch != mem[VIDEO_RAM_BASE + o1])
 				continue;
-			set_video_ram_dirty(o1,1);
+			set_video_ram_dirty(o1);
 		}
 	}
 
@@ -1095,7 +1095,7 @@ static void cgenie_frame(uint32_t param)
 				continue;
 			osd_fillrect(NULL, x0, y0, w, h, white);
 			osd_fillrect(frame, x0, y0, w, h, white);
-			set_video_ram_dirty(addr, 1);
+			set_video_ram_dirty(addr);
 		}
 	}
 	conflict_cnt = 0;
