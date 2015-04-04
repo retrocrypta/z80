@@ -346,6 +346,8 @@ int32_t mc6845_w(uint32_t chip, uint32_t offset, uint8_t data)
 			if((*crtc->ifc.video_addr_changed)(chip, frame_base_old, mc6845_get_start(chip)))
 				sys_set_full_refresh();
 		}
+		else
+			sys_set_full_refresh();
 		break;
 
 	default:
