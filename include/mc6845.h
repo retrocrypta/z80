@@ -75,8 +75,8 @@ uint32_t mc6845_get_char_columns(uint32_t chip);
 uint32_t mc6845_get_char_height(uint32_t chip);
 uint32_t mc6845_get_char_lines(uint32_t chip);
 uint32_t mc6845_get_start(uint32_t chip);
-uint32_t mc6845_get_horz_sync(uint32_t chip);
-uint32_t mc6845_get_vert_sync(uint32_t chip);
+uint32_t mc6845_get_horz_pos(uint32_t chip);
+uint32_t mc6845_get_vert_pos(uint32_t chip);
 uint32_t mc6845_get_type(uint32_t chip);
 
 /*

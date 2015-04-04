@@ -132,10 +132,10 @@ static uint32_t screen_h = 25;
 static uint32_t char_h = 8;
 
 /** @brief horizontal sync position */
-static uint32_t hsync = 4;
+static uint32_t hpos = 4;
 
 /** @brief vertical sync position */
-static uint32_t vsync = 3;
+static uint32_t vpos = 3;
 
 /** @brief screen character columns (changed) */
 static uint32_t screen_w_changed;
@@ -147,10 +147,10 @@ static uint32_t screen_h_changed;
 static uint32_t char_h_changed;
 
 /** @brief horizontal sync position (changed) */
-static uint32_t hsync_changed;
+static uint32_t hpos_changed;
 
 /** @brief vertical sync position (changed) */
-static uint32_t vsync_changed;
+static uint32_t vpos_changed;
 
 /** @brief frame buffer width */
 static int32_t frame_w = 8 * SCREENW;
@@ -920,8 +920,8 @@ static void video_graphics(void)
 
 static int cgenie_resize(int32_t w, int32_t h)
 {
-	int32_t hs = hsync == 71 ? -14 : hsync - 14;
-	int32_t vs = vsync - 5;
+	int32_t hs = hpos == 71 ? -14 : hpos - 14;
+	int32_t vs = vpos - 5;
 	int32_t fw;
 	int32_t fh;
 	uint32_t bg;
@@ -999,33 +999,26 @@ static void cgenie_frame(uint32_t param)
 			char_h_changed = 1;
 		CHANGE(1);
 	}
-	if (hsync_changed != mc6845_get_horz_sync(0)) {
-		hsync_changed = mc6845_get_horz_sync(0);
-		if (0 == hsync_changed)
-			hsync_changed = 1;
+
+	if (hpos_changed != mc6845_get_horz_pos(0)) {
+		hpos_changed = mc6845_get_horz_pos(0);
+		if (0 == hpos_changed)
+			hpos_changed = 1;
 		CHANGE(1);
 	}
-	if (vsync_changed != mc6845_get_vert_sync(0)) {
-		vsync_changed = mc6845_get_vert_sync(0);
-		if (0 == vsync_changed)
-			vsync_changed = 1;
+	if (vpos_changed != mc6845_get_vert_pos(0)) {
+		vpos_changed = mc6845_get_vert_pos(0);
+		if (0 == vpos_changed)
+			vpos_changed = 1;
 		CHANGE(1);
 	}
 	if (changecnt > 0) {
 		if (--changecnt == 0) {
-#if	0
-			printf("w:%d (%d)  h:%d (%d)  ch:%d (%d)  hs:%d (%d)  vs:%d (%d)\n",
-				screen_w_changed, screen_w,
-				screen_h_changed, screen_h,
-				char_h_changed, char_h,
-				hsync_changed, hsync,
-				vsync_changed, vsync);
-#endif
 			screen_h = screen_h_changed;
 			screen_w = screen_w_changed;
 			char_h = char_h_changed;
-			hsync = hsync_changed;
-			vsync = vsync_changed;
+			hpos = hpos_changed;
+			vpos = vpos_changed;
 			cgenie_resize(frame_w, frame_h);
 		}
 	}

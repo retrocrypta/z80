@@ -38,12 +38,14 @@
 
 #define REG(x) crtc->reg[x]
 
-#define CRTC6845_COLUMNS (REG(0) + 1)
-#define CRTC6845_CHAR_COLUMNS REG(1)
-#define	CRTC6845_HORIZONTAL_SYNC (REG(0) + 1 - REG(2))
-#define CRTC6845_LINES (REG(4) * CRTC6845_CHAR_HEIGHT + REG(5))
+#define CRTC6845_CHARS_TOTAL (REG(0) + 1)
+#define CRTC6845_CHAR_DISPLAYED REG(1)
+#define CRTC6845_HORIZONTAL_SYNC REG(2)
+#define CRTC6845_HORIZONTAL_POS (CRTC6845_CHARS_TOTAL - CRTC6845_HORIZONTAL_SYNC)
+#define CRTC6845_LINES_TOTAL (REG(4) + 1)
 #define CRTC6845_CHAR_LINES REG(6)
-#define	CRTC6845_VERTICAL_SYNC (REG(4) + 1 - REG(7))
+#define CRTC6845_VERTICAL_SYNC REG(7)
+#define CRTC6845_VERTICAL_POS (CRTC6845_LINES_TOTAL - CRTC6845_VERTICAL_SYNC)
 #define CRTC6845_CHAR_HEIGHT ((REG(9) & 31) + 1)
 #define CRTC6845_VIDEO_START (256 * REG(12) + REG(13))
 #define CRTC6845_INTERLACE_MODE (REG(8) % 4)
@@ -186,24 +188,6 @@ int32_t mc6845_init(uint32_t num, ifc6845_t *config)
 	return 0;
 }
 
-#if	neverdef
-static uint32_t mc6845_clocks_in_frame(uint32_t chip)
-{
-	mc6845_t *crtc = &mc6845[chip];
-	uint32_t clocks = CRTC6845_COLUMNS * CRTC6845_LINES;
-
-	switch (CRTC6845_INTERLACE_MODE) {
-	case CRTC6845_INTERLACE_SIGNAL:
-		/* interlace generation of video signals only */
-		return clocks / 2;
-	case CRTC6845_INTERLACE:
-		/* interlace */
-		return clocks / 2;
-	}
-	return clocks;
-}
-#endif
-
 void mc6845_set_clock(uint32_t chip, uint32_t freq)
 {
 	mc6845_t *crtc = &mc6845[chip];
@@ -237,7 +221,7 @@ static void mc6845_timer_callback(uint32_t chip)
 uint32_t mc6845_get_char_columns(uint32_t chip) 
 { 
 	mc6845_t *crtc = &mc6845[chip];
-	return CRTC6845_CHAR_COLUMNS;
+	return CRTC6845_CHAR_DISPLAYED;
 }
 
 uint32_t mc6845_get_char_height(uint32_t chip) 
@@ -258,16 +242,16 @@ uint32_t mc6845_get_start(uint32_t chip)
 	return CRTC6845_VIDEO_START;
 }
 
-uint32_t mc6845_get_horz_sync(uint32_t chip)
+uint32_t mc6845_get_horz_pos(uint32_t chip)
 {
 	mc6845_t *crtc = &mc6845[chip];
-	return CRTC6845_HORIZONTAL_SYNC;
+	return CRTC6845_HORIZONTAL_POS;
 }
 
-uint32_t mc6845_get_vert_sync(uint32_t chip)
+uint32_t mc6845_get_vert_pos(uint32_t chip)
 {
 	mc6845_t *crtc = &mc6845[chip];
-	return CRTC6845_VERTICAL_SYNC;
+	return CRTC6845_VERTICAL_POS;
 }
 
 
