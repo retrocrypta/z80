@@ -305,7 +305,7 @@ int32_t mc6845_w(uint32_t chip, uint32_t offset, uint8_t data)
 	mc6845_t *crtc = &mc6845[chip];
 	mc6845_cursor_t cursor;
 	uint8_t mask;
-	uint32_t n, frame_base_old;
+	uint32_t n, new_val, frame_base_old;
 
 	if (0 == (offset & 1)) {
 		/* change the idx register */
@@ -318,19 +318,20 @@ int32_t mc6845_w(uint32_t chip, uint32_t offset, uint8_t data)
 	if (n >= CRTC6845_REGS)
 		return -1;
 
+	/* keep old values used below in special handlings */
 	frame_base_old = mc6845_get_start(chip);
 
+	/* Don't zero out bits not covered by the mask. */
 	mask = mc6845_reg_mask[crtc->ifc.type][n].store_mask;
-
 	LOG((7,"6845","write reg %x data:%02x mask:%02x\n",
 		n, data, mask));
-
-	/* Don't zero out bits not covered by the mask. */
 	crtc->reg[n] &= ~mask;
 	crtc->reg[n] |= (data & mask);
 
 	/* are there special consequences to writing to this register? */
 	switch (n) {
+
+	/* cursor changed */
 	case 0x0a:
 	case 0x0b:
 	case 0x0e:
@@ -340,13 +341,13 @@ int32_t mc6845_w(uint32_t chip, uint32_t offset, uint8_t data)
 			(*crtc->ifc.cursor_changed)(chip, &cursor);
 		break;
 
+	/* video address changed */
 	case 0x0c:
 	case 0x0d:
-		if (NULL != crtc->ifc.video_addr_changed) {
-			if((*crtc->ifc.video_addr_changed)(chip, frame_base_old, mc6845_get_start(chip)))
-				sys_set_full_refresh();
-		}
-		else
+		new_val = mc6845_get_start(chip);
+		if (new_val != frame_base_old &&
+			(NULL == crtc->ifc.video_addr_changed ||
+			(*crtc->ifc.video_addr_changed)(chip, frame_base_old, new_val) != 0))
 			sys_set_full_refresh();
 		break;
 

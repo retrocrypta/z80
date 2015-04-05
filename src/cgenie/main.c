@@ -146,11 +146,11 @@ static uint32_t screen_h_changed;
 /** @brief character pixel rows (changed) */
 static uint32_t char_h_changed;
 
-/** @brief horizontal sync position (changed) */
-static uint32_t hpos_changed;
+/** @brief horizontal sync position (last frame) */
+static uint32_t hpos_old;
 
-/** @brief vertical sync position (changed) */
-static uint32_t vpos_changed;
+/** @brief vertical sync position (last frame) */
+static uint32_t vpos_old;
 
 /** @brief frame buffer width */
 static int32_t frame_w = 8 * SCREENW;
@@ -244,7 +244,8 @@ static void wr_fdc(uint32_t offset, uint8_t data);
 static uint8_t rd_port(uint32_t offset);
 static void wr_port(uint32_t offset, uint8_t data);
 static void cgenie_cursor(uint32_t chip, mc6845_cursor_t *cursor);
-static uint32_t cgenie_video_addr(uint32_t chip, uint32_t frame_base_old, uint32_t frame_base_new);
+static uint32_t cgenie_video_addr_changed(uint32_t chip, uint32_t frame_base_old, uint32_t frame_base_new);
+
 static void video_text(void);
 static void video_graphics(void);
 static int cgenie_resize(int32_t w, int32_t h);
@@ -344,7 +345,7 @@ static ifc6845_t mc6845 = {
 	M6845_TYPE_GENUINE,
 	14380000,
 	cgenie_cursor,
-	cgenie_video_addr
+	cgenie_video_addr_changed
 };
 
 /** @brief AY8910 audio chip interface structure */
@@ -823,25 +824,23 @@ static void cgenie_cursor(uint32_t chip, mc6845_cursor_t *cursor)
 		set_video_ram_dirty(cursor->pos);
 }
 
-static uint32_t cgenie_video_addr(uint32_t chip, uint32_t frame_base_old, uint32_t frame_base_new)
+static uint32_t cgenie_video_addr_changed(uint32_t chip, uint32_t frame_base_old, uint32_t frame_base_new)
 {
 	(void)chip;
 	uint32_t i, size;
 
 	size = mc6845_get_char_lines(chip) * mc6845_get_char_columns(chip);
-	/* if the video base offset changed, mark dirty changes */
-	if (frame_base_new != frame_base_old) {
-		for (i = 0; i < size; i++) {
-			uint32_t o0 = (frame_base_old + i) % VIDEO_RAM_SIZE;
-			uint32_t o1 = (frame_base_new + i) % VIDEO_RAM_SIZE;
-			if (mem[VIDEO_RAM_BASE + o0] != mem[VIDEO_RAM_BASE + o1])
-				set_video_ram_dirty(o1);
-			/* for text mode mark colour dirties */
-			if (gfx_mode == 0 &&
-				(mem[COLOUR_RAM_BASE + o0 % COLOUR_RAM_SIZE] % 16) !=
-				(mem[COLOUR_RAM_BASE + o1 % COLOUR_RAM_SIZE] % 16))
-					set_colour_ram_dirty(o1);
-		}
+	/* mark dirty changes caused by address change */
+	for (i = 0; i < size; i++) {
+		uint32_t o0 = (frame_base_old + i) % VIDEO_RAM_SIZE;
+		uint32_t o1 = (frame_base_new + i) % VIDEO_RAM_SIZE;
+		if (mem[VIDEO_RAM_BASE + o0] != mem[VIDEO_RAM_BASE + o1])
+			set_video_ram_dirty(o1);
+		/* for text mode mark colour dirties */
+		if (gfx_mode == 0 &&
+			(mem[COLOUR_RAM_BASE + o0 % COLOUR_RAM_SIZE] % 16) !=
+			(mem[COLOUR_RAM_BASE + o1 % COLOUR_RAM_SIZE] % 16))
+				set_colour_ram_dirty(o1);
 	}
 	return 0;
 }
@@ -999,26 +998,26 @@ static void cgenie_frame(uint32_t param)
 			char_h_changed = 1;
 		CHANGE(1);
 	}
+	if (hpos_old != mc6845_get_horz_pos(0)) {
+		hpos_old = mc6845_get_horz_pos(0);
+		if (0 == hpos_old)
+			hpos_old = 1;
+		CHANGE(1);
+	}
+	if (vpos_old != mc6845_get_vert_pos(0)) {
+		vpos_old = mc6845_get_vert_pos(0);
+		if (0 == vpos_old)
+			vpos_old = 1;
+		CHANGE(1);
+	}
 
-	if (hpos_changed != mc6845_get_horz_pos(0)) {
-		hpos_changed = mc6845_get_horz_pos(0);
-		if (0 == hpos_changed)
-			hpos_changed = 1;
-		CHANGE(1);
-	}
-	if (vpos_changed != mc6845_get_vert_pos(0)) {
-		vpos_changed = mc6845_get_vert_pos(0);
-		if (0 == vpos_changed)
-			vpos_changed = 1;
-		CHANGE(1);
-	}
 	if (changecnt > 0) {
 		if (--changecnt == 0) {
 			screen_h = screen_h_changed;
 			screen_w = screen_w_changed;
 			char_h = char_h_changed;
-			hpos = hpos_changed;
-			vpos = vpos_changed;
+			hpos = hpos_old;
+			vpos = vpos_old;
 			cgenie_resize(frame_w, frame_h);
 		}
 	}
