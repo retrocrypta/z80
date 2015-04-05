@@ -342,10 +342,10 @@ void (*wr_io[L1SIZE])(uint32_t offset, uint8_t data) = {
 
 /** @brief MC6845 CRTC interface structure */
 static ifc6845_t mc6845 = {
-	M6845_TYPE_GENUINE,
-	14380000,
-	cgenie_cursor,
-	cgenie_video_addr_changed
+	.type = M6845_TYPE_GENUINE,
+	.freq = 14380000,
+	.cursor_changed = cgenie_cursor,
+	.video_addr_changed = cgenie_video_addr_changed
 };
 
 /** @brief AY8910 audio chip interface structure */

@@ -305,7 +305,7 @@ int32_t mc6845_w(uint32_t chip, uint32_t offset, uint8_t data)
 	mc6845_t *crtc = &mc6845[chip];
 	mc6845_cursor_t cursor;
 	uint8_t mask;
-	uint32_t n, new_val, frame_base_old;
+	uint32_t n, new_val, hpos_old, vpos_old, frame_base_old;
 
 	if (0 == (offset & 1)) {
 		/* change the idx register */
@@ -320,6 +320,8 @@ int32_t mc6845_w(uint32_t chip, uint32_t offset, uint8_t data)
 
 	/* keep old values used below in special handlings */
 	frame_base_old = mc6845_get_start(chip);
+	hpos_old = mc6845_get_horz_pos(chip);
+	vpos_old = mc6845_get_vert_pos(chip);
 
 	/* Don't zero out bits not covered by the mask. */
 	mask = mc6845_reg_mask[crtc->ifc.type][n].store_mask;
@@ -339,6 +341,26 @@ int32_t mc6845_w(uint32_t chip, uint32_t offset, uint8_t data)
 		mc6845_get_cursor(chip, &cursor);
 		if (NULL != crtc->ifc.cursor_changed)
 			(*crtc->ifc.cursor_changed)(chip, &cursor);
+		break;
+
+	/* hpos changed */
+	case 0x00:
+	case 0x02:
+		new_val = mc6845_get_horz_pos(chip);
+		if (new_val != hpos_old &&
+			(NULL == crtc->ifc.video_hpos_changed ||
+			(*crtc->ifc.video_hpos_changed)(chip, hpos_old, new_val) != 0))
+			sys_set_full_refresh();
+		break;
+
+	/* vpos changed */
+	case 0x04:
+	case 0x07:
+		new_val = mc6845_get_vert_pos(chip);
+		if (new_val != vpos_old &&
+			(NULL == crtc->ifc.video_vpos_changed ||
+			(*crtc->ifc.video_vpos_changed)(chip, vpos_old, new_val) != 0))
+			sys_set_full_refresh();
 		break;
 
 	/* video address changed */
