@@ -837,10 +837,10 @@ static uint32_t cgenie_video_addr_changed(uint32_t chip, uint32_t frame_base_old
 		if (mem[VIDEO_RAM_BASE + o0] != mem[VIDEO_RAM_BASE + o1])
 			set_video_ram_dirty(o1);
 		/* for text mode mark colour dirties */
-		if (gfx_mode == 0 &&
-			(mem[COLOUR_RAM_BASE + o0 % COLOUR_RAM_SIZE] % 16) !=
-			(mem[COLOUR_RAM_BASE + o1 % COLOUR_RAM_SIZE] % 16))
-				set_colour_ram_dirty(o1);
+		else if (gfx_mode == 0 && /* TODO ignore empty chars */
+			(mem[COLOUR_RAM_BASE + (o0 % COLOUR_RAM_SIZE)] % 16) !=
+			(mem[COLOUR_RAM_BASE + (o1 % COLOUR_RAM_SIZE)] % 16))
+			set_colour_ram_dirty(o1);
 	}
 	return 0;
 }
