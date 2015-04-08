@@ -327,6 +327,16 @@ static __inline void osd_screen_dirty(SDL_Rect *dst)
 	if (NULL == screen)
 		return;
 
+	/* check if area is already dirty */
+	for (n = 0; n < dirty_count; n++) {
+		r = &dirty[n];
+		if (dst->y >= r->y &&
+			dst->y + dst->h <= r->y + r->h &&
+			dst->x >= r->x &&
+			dst->x + dst->w <= r->x + r->w) {
+				return;
+			}
+	}
 	/* try to combine the dirty rectangle with an existing one */
 	for (n = 0; n < dirty_count; n++) {
 		r = &dirty[n];
@@ -428,6 +438,16 @@ static __inline void osd_bitmap_dirty(osd_bitmap_t *bitmap, SDL_Rect *dst)
 		return;
 	}
 
+	/* check if area is already dirty */
+	for (n = 0; n < bitmap->dirty_count; n++) {
+		r = &bitmap->dirty[n];
+		if (dst->y >= r->y &&
+			dst->y + dst->h <= r->y + r->h &&
+			dst->x >= r->x &&
+			dst->x + dst->w <= r->x + r->w) {
+				return;
+			}
+	}
 	/* try to combine the dirty rectangle with an existing one */
 	for (n = 0; n < bitmap->dirty_count; n++) {
 		r = &bitmap->dirty[n];
