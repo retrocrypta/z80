@@ -923,15 +923,7 @@ static int cgenie_resize(int32_t w, int32_t h)
 	int32_t vs = vpos - 5;
 	int32_t fw;
 	int32_t fh;
-	uint32_t bg;
 
-	bg = osd_color(frame,
-		osd_get_r(pal_txt[C_BACKGROUND]),
-		osd_get_g(pal_txt[C_BACKGROUND]),
-		osd_get_b(pal_txt[C_BACKGROUND]));
-	osd_fillrect(frame, screen_x, screen_y,
-		screen_w * font_w,
-		screen_h * char_h * font_h / FONT_H, bg);
 	frame_w = w;
 	frame_h = h;
 	fw = w / SCREENW;
