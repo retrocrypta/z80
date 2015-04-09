@@ -63,8 +63,11 @@ static uint32_t *colour_ram_dirty;
 /** @brief Font RAM dirty flags */
 static uint32_t *font_ram_dirty;
 
-/** @brief redraw entire screen */
+/** @brief redraw all */
 static uint32_t dirty_all;
+
+/** @brief redraw full frame */
+static uint32_t frame_redraw;
 
 /** @brief video memory (16K at 0x4000) */
 #define	VIDEO_RAM_BASE	0x4000
@@ -248,7 +251,7 @@ static uint32_t cgenie_video_addr_changed(uint32_t chip, uint32_t frame_base_old
 
 static void video_text(void);
 static void video_graphics(void);
-static int cgenie_resize(int32_t w, int32_t h);
+static int cgenie_resize_ext(int32_t w, int32_t h);
 static void cgenie_frame(uint32_t param);
 static int cgenie_screen(void);
 static int cgenie_memory(void);
@@ -957,14 +960,14 @@ static int cgenie_resize(int32_t w, int32_t h)
 	return 0;
 }
 
-#define CHANGE(n) do { \
-	if (0 == changecnt) \
-		changecnt = n; \
-} while (0)
+static int cgenie_resize_ext(int32_t w, int32_t h)
+{
+	frame_redraw = 1;
+	return cgenie_resize(w, h);
+}
 
 static void cgenie_frame(uint32_t param)
 {
-	static uint32_t changecnt;
 	uint32_t ch, i, n, size, frame_base;
 
 	ay8910_update_stream();
@@ -976,19 +979,19 @@ static void cgenie_frame(uint32_t param)
 		screen_h_changed = mc6845_get_char_lines(0);
 		if (0 == screen_h_changed)
 			screen_h_changed = 1;
-		CHANGE(1);
+		frame_redraw = 1;
 	}
 	if (screen_w_changed != mc6845_get_char_columns(0)) {
 		screen_w_changed = mc6845_get_char_columns(0);
 		if (0 == screen_w_changed)
 			screen_w_changed = 1;
-		CHANGE(1);
+		frame_redraw = 1;
 	}
 	if (char_h_changed != mc6845_get_char_height(0)) {
 		char_h_changed = mc6845_get_char_height(0);
 		if (0 == char_h_changed)
 			char_h_changed = 1;
-		CHANGE(1);
+		frame_redraw = 1;
 	}
 
 	hpos = mc6845_get_horz_pos(0);
@@ -998,7 +1001,7 @@ static void cgenie_frame(uint32_t param)
 	if (0 == vpos)
 		vpos = 1;
 
-	if (changecnt > 0 || vpos != vpos_old || hpos != hpos_old) {
+	if (frame_redraw || vpos != vpos_old || hpos != hpos_old) {
 		screen_h = screen_h_changed;
 		screen_w = screen_w_changed;
 		char_h = char_h_changed;
@@ -1010,7 +1013,7 @@ static void cgenie_frame(uint32_t param)
 
 	/* render modified character generator codes */
 	for (ch = 0; ch < 128; ch++) {
-		if (0 == changecnt && 0 == get_font_ram_dirty(ch))
+		if (0 == frame_redraw && 0 == get_font_ram_dirty(ch))
 			continue;
 		res_font_ram_dirty(ch);
 		osd_render_font(font,
@@ -1039,7 +1042,7 @@ static void cgenie_frame(uint32_t param)
 			osd_get_r(pal_gfx[0]),
 			osd_get_g(pal_gfx[0]),
 			osd_get_b(pal_gfx[0]));
-		if (changecnt > 0)
+		if (frame_redraw)
 			osd_fillrect(frame, 0, 0, frame_w, frame_h, bg);
 		/* clear only displayed screen in case geometry has not cheanged */
 		else if (hpos == hpos_old && vpos == vpos_old) {
@@ -1078,7 +1081,7 @@ static void cgenie_frame(uint32_t param)
 	/* clear all the color dirty flags */
 	memset(colour_ram_dirty, 0, COLOUR_RAM_SIZE/8);
 	dirty_all = 0;
-	changecnt = 0;
+	frame_redraw = 0;
 
 	hpos_old = hpos;
 	vpos_old = vpos;
@@ -1306,7 +1309,7 @@ int main(int argc, char **argv)
 		if (!strcmp(argv[i], "-d"))
 			dumpmem = 1;
 
-	if (osd_init(cgenie_resize, NULL, cgenie_key_dn, cgenie_key_up, argc, argv))
+	if (osd_init(cgenie_resize_ext, NULL, cgenie_key_dn, cgenie_key_up, argc, argv))
 		return 1;
 
 	if (cgenie_screen() < 0) {
@@ -1325,6 +1328,7 @@ int main(int argc, char **argv)
 	z80_reset(cpu);
 	cgenie_cas_init();
 	cgenie_fdc_init();
+	frame_redraw = 1;
 	frame_timer = tmr_alloc(cgenie_frame, tmr_double_to_time(TIME_IN_MSEC(20)),
 		0, tmr_double_to_time(TIME_IN_MSEC(20)));
 	clock_timer = tmr_alloc(cgenie_clock, tmr_double_to_time(TIME_IN_MSEC(25)),
