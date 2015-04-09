@@ -990,28 +990,19 @@ static void cgenie_frame(uint32_t param)
 			char_h_changed = 1;
 		CHANGE(1);
 	}
-	if (hpos_old != mc6845_get_horz_pos(0)) {
-		hpos_old = mc6845_get_horz_pos(0);
-		if (0 == hpos_old)
-			hpos_old = 1;
-		CHANGE(1);
-	}
-	if (vpos_old != mc6845_get_vert_pos(0)) {
-		vpos_old = mc6845_get_vert_pos(0);
-		if (0 == vpos_old)
-			vpos_old = 1;
-		CHANGE(1);
-	}
 
-	if (changecnt > 0) {
-		if (--changecnt == 0) {
-			screen_h = screen_h_changed;
-			screen_w = screen_w_changed;
-			char_h = char_h_changed;
-			hpos = hpos_old;
-			vpos = vpos_old;
-			cgenie_resize(frame_w, frame_h);
-		}
+	hpos = mc6845_get_horz_pos(0);
+	if (0 == hpos)
+		hpos = 1;
+	vpos = mc6845_get_vert_pos(0);
+	if (0 == vpos)
+		vpos = 1;
+
+	if (changecnt > 0 || vpos != vpos_old || hpos != hpos_old) {
+		screen_h = screen_h_changed;
+		screen_w = screen_w_changed;
+		char_h = char_h_changed;
+		cgenie_resize(frame_w, frame_h);
 	}
 
 	frame_base = mc6845_get_start(0);
@@ -1019,7 +1010,7 @@ static void cgenie_frame(uint32_t param)
 
 	/* render modified character generator codes */
 	for (ch = 0; ch < 128; ch++) {
-		if (0 == get_font_ram_dirty(ch))
+		if (0 == changecnt && 0 == get_font_ram_dirty(ch))
 			continue;
 		res_font_ram_dirty(ch);
 		osd_render_font(font,
@@ -1041,12 +1032,39 @@ static void cgenie_frame(uint32_t param)
 		}
 	}
 
+	/* was at least set by cgenie_resize */
 	if (dirty_all) {
+		int32_t x, y, w, h;
 		uint32_t bg = osd_color(frame,
 			osd_get_r(pal_gfx[0]),
 			osd_get_g(pal_gfx[0]),
 			osd_get_b(pal_gfx[0]));
-		osd_fillrect(frame, 0, 0, frame_w, frame_h, bg);
+		if (changecnt > 0)
+			osd_fillrect(frame, 0, 0, frame_w, frame_h, bg);
+		/* clear only displayed screen in case geometry has not cheanged */
+		else if (hpos == hpos_old && vpos == vpos_old) {
+			x = screen_x;
+			y = screen_y;
+			w = screen_w * font_w;
+			h = screen_h * char_h * font_h / FONT_H;
+			osd_fillrect(frame, x, y, w, h, bg);
+		}
+		/* clear only displayed screen + shadow in case screen has moved */
+		else {
+			x = screen_x;
+			if (hpos > hpos_old)
+				x -= (hpos - hpos_old) * font_w;
+			y = screen_y;
+			if (vpos > vpos_old)
+				y -= (vpos - vpos_old) * char_h * font_h / FONT_H;
+			w = screen_w * font_w;
+			if (hpos < hpos_old)
+				w += (hpos_old - hpos) * font_w;
+			h = screen_h * char_h * font_h / FONT_H;
+			if (vpos < vpos_old)
+				h += (vpos_old - vpos) * char_h * font_h / FONT_H;
+			osd_fillrect(frame, x, y, w, h, bg);
+		}
 	}
 
 	switch (gfx_mode) {
@@ -1060,6 +1078,10 @@ static void cgenie_frame(uint32_t param)
 	/* clear all the color dirty flags */
 	memset(colour_ram_dirty, 0, COLOUR_RAM_SIZE/8);
 	dirty_all = 0;
+	changecnt = 0;
+
+	hpos_old = hpos;
+	vpos_old = vpos;
 
 	/* add flicker caused by accessing the character generator RAM */
 	if (screen_w > 0 && char_h > 0 && conflict_cnt > 0) {
