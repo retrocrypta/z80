@@ -21,8 +21,6 @@
 
 #define STEP 0x8000
 
-static uint32_t num = 0;
-
 typedef struct chip_ay8910_s {
 	int32_t channel;
 	int32_t sample_rate;
@@ -88,34 +86,33 @@ enum {
 	REG_COUNT
 }	AY8910_REG;
 
-#define AY_AFINE	ay->regs[REG_AFINE]
-#define AY_ACOARSE	ay->regs[REG_ACOARSE]
-#define AY_BFINE	ay->regs[REG_BFINE]
-#define AY_BCOARSE	ay->regs[REG_BCOARSE]
-#define AY_CFINE	ay->regs[REG_CFINE]
-#define AY_CCOARSE	ay->regs[REG_CCOARSE]
-#define AY_NOISEPER	ay->regs[REG_NOISEPER]
-#define AY_ENABLE	ay->regs[REG_ENABLE]
-#define AY_AVOL		ay->regs[REG_AVOL]
-#define AY_BVOL		ay->regs[REG_BVOL]
-#define AY_CVOL		ay->regs[REG_CVOL]
-#define AY_EFINE	ay->regs[REG_EFINE]
-#define AY_ECOARSE	ay->regs[REG_ECOARSE]
-#define AY_ESHAPE	ay->regs[REG_ESHAPE]
-#define AY_PORTA	ay->regs[REG_PORTA]
-#define AY_PORTB	ay->regs[REG_PORTB]
+#define AY_AFINE	chip.regs[REG_AFINE]
+#define AY_ACOARSE	chip.regs[REG_ACOARSE]
+#define AY_BFINE	chip.regs[REG_BFINE]
+#define AY_BCOARSE	chip.regs[REG_BCOARSE]
+#define AY_CFINE	chip.regs[REG_CFINE]
+#define AY_CCOARSE	chip.regs[REG_CCOARSE]
+#define AY_NOISEPER	chip.regs[REG_NOISEPER]
+#define AY_ENABLE	chip.regs[REG_ENABLE]
+#define AY_AVOL		chip.regs[REG_AVOL]
+#define AY_BVOL		chip.regs[REG_BVOL]
+#define AY_CVOL		chip.regs[REG_CVOL]
+#define AY_EFINE	chip.regs[REG_EFINE]
+#define AY_ECOARSE	chip.regs[REG_ECOARSE]
+#define AY_ESHAPE	chip.regs[REG_ESHAPE]
+#define AY_PORTA	chip.regs[REG_PORTA]
+#define AY_PORTB	chip.regs[REG_PORTB]
 
-static chip_ay8910_t chips[MAX_AY8910];		/* array of ay's */
+static chip_ay8910_t chip;
 
-static void ay8910_update(uint32_t chip, int16_t *buffer, uint32_t length);
+static void ay8910_update(int16_t *buffer, uint32_t length);
 
-void _ay8910_reg_w(uint32_t chip, uint32_t reg, uint32_t data)
+void _ay8910_reg_w(uint32_t reg, uint32_t data)
 {
-	chip_ay8910_t *ay = &chips[chip];
 	int old;
 
 
-	ay->regs[reg] = data;
+	chip.regs[reg] = data;
 
 	/*
 	 * A note about the period of tones, noise and envelope:
@@ -136,118 +133,118 @@ void _ay8910_reg_w(uint32_t chip, uint32_t reg, uint32_t data)
 	case REG_AFINE:
 	case REG_ACOARSE:
 		AY_ACOARSE &= 0x0f;
-		old = ay->period_a;
-		ay->period_a = (AY_AFINE + 256 * AY_ACOARSE) * ay->update_step;
-		if (0 == ay->period_a)
-			ay->period_a = ay->update_step;
-		ay->count_a += ay->period_a - old;
-		if (ay->count_a <= 0)
-			ay->count_a = 1;
+		old = chip.period_a;
+		chip.period_a = (AY_AFINE + 256 * AY_ACOARSE) * chip.update_step;
+		if (0 == chip.period_a)
+			chip.period_a = chip.update_step;
+		chip.count_a += chip.period_a - old;
+		if (chip.count_a <= 0)
+			chip.count_a = 1;
 		LOG((LL,"AY8910","channel a period 0x%x, count 0x%x\n",
-			ay->period_a, ay->count_a));
+			chip.period_a, chip.count_a));
 		break;
 
 	case REG_BFINE:
 	case REG_BCOARSE:
 		AY_BCOARSE &= 0x0f;
-		old = ay->period_b;
-		ay->period_b = (AY_BFINE + 256 * AY_BCOARSE) * ay->update_step;
-		if (0 == ay->period_b)
-			ay->period_b = ay->update_step;
-		ay->count_b += ay->period_b - old;
-		if (ay->count_b <= 0)
-			ay->count_b = 1;
+		old = chip.period_b;
+		chip.period_b = (AY_BFINE + 256 * AY_BCOARSE) * chip.update_step;
+		if (0 == chip.period_b)
+			chip.period_b = chip.update_step;
+		chip.count_b += chip.period_b - old;
+		if (chip.count_b <= 0)
+			chip.count_b = 1;
 		LOG((LL,"AY8910","channel b period 0x%x, count 0x%x\n",
-			ay->period_b, ay->count_b));
+			chip.period_b, chip.count_b));
 		break;
 
 	case REG_CFINE:
 	case REG_CCOARSE:
 		AY_CCOARSE &= 0x0f;
-		old = ay->period_c;
-		ay->period_c = (AY_CFINE + 256 * AY_CCOARSE) * ay->update_step;
-		if (0 == ay->period_c)
-			ay->period_c = ay->update_step;
-		ay->count_c += ay->period_c - old;
-		if (ay->count_c <= 0)
-			ay->count_c = 1;
+		old = chip.period_c;
+		chip.period_c = (AY_CFINE + 256 * AY_CCOARSE) * chip.update_step;
+		if (0 == chip.period_c)
+			chip.period_c = chip.update_step;
+		chip.count_c += chip.period_c - old;
+		if (chip.count_c <= 0)
+			chip.count_c = 1;
 		LOG((LL,"AY8910","channel c period 0x%x, count 0x%x\n",
-			ay->period_c, ay->count_c));
+			chip.period_c, chip.count_c));
 		break;
 
 	case REG_NOISEPER:
 		AY_NOISEPER &= 31;
-		old = ay->period_n;
-		ay->period_n = AY_NOISEPER * ay->update_step;
-		if (0 == ay->period_n)
-			ay->period_n = ay->update_step;
-		ay->count_n += ay->period_n - old;
-		if (ay->count_n <= 0)
-			ay->count_n = 1;
+		old = chip.period_n;
+		chip.period_n = AY_NOISEPER * chip.update_step;
+		if (0 == chip.period_n)
+			chip.period_n = chip.update_step;
+		chip.count_n += chip.period_n - old;
+		if (chip.count_n <= 0)
+			chip.count_n = 1;
 		LOG((LL,"AY8910","noise period 0x%x, count 0x%x\n",
-			ay->period_n, ay->count_n));
+			chip.period_n, chip.count_n));
 		break;
 
 	case REG_ENABLE:
-		if (-1 == ay->last_enable ||
-		    (ay->last_enable & 0x40) != (AY_ENABLE & 0x40)) {
+		if (-1 == chip.last_enable ||
+		    (chip.last_enable & 0x40) != (AY_ENABLE & 0x40)) {
 			/* write out 0xff if port set to input */
-			if (NULL != ay->port_a_w)
-				(*ay->port_a_w)(0, (AY_ENABLE & 0x40) ?
+			if (NULL != chip.port_a_w)
+				(*chip.port_a_w)(0, (AY_ENABLE & 0x40) ?
 					AY_PORTA : 0xff);
 		}
 
-		if (-1 == ay->last_enable ||
-		    (ay->last_enable & 0x80) != (AY_ENABLE & 0x80)) {
+		if (-1 == chip.last_enable ||
+		    (chip.last_enable & 0x80) != (AY_ENABLE & 0x80)) {
 			/* write out 0xff if port set to input */
-			if (NULL != ay->port_b_w)
-				(*ay->port_b_w)(0, (AY_ENABLE & 0x80) ?
+			if (NULL != chip.port_b_w)
+				(*chip.port_b_w)(0, (AY_ENABLE & 0x80) ?
 					AY_PORTB : 0xff);
 		}
 
-		ay->last_enable = AY_ENABLE;
+		chip.last_enable = AY_ENABLE;
 		break;
 
 	case REG_AVOL:
 		AY_AVOL &= 31;
-		ay->envelope_a = AY_AVOL & 0x10;
-		if (ay->envelope_a) {
-			ay->vol_a = ay->vol_e;
+		chip.envelope_a = AY_AVOL & 0x10;
+		if (chip.envelope_a) {
+			chip.vol_a = chip.vol_e;
 		} else {
-			ay->vol_a = ay->volume_table[AY_AVOL ? AY_AVOL*2+1 : 0];
+			chip.vol_a = chip.volume_table[AY_AVOL ? AY_AVOL*2+1 : 0];
 		}
 		break;
 
 	case REG_BVOL:
 		AY_BVOL &= 31;
-		ay->envelope_b = AY_BVOL & 0x10;
-		if (ay->envelope_b) {
-			ay->vol_b = ay->vol_e;
+		chip.envelope_b = AY_BVOL & 0x10;
+		if (chip.envelope_b) {
+			chip.vol_b = chip.vol_e;
 		} else {
-			ay->vol_b = ay->volume_table[AY_BVOL ? AY_BVOL*2+1 : 0];
+			chip.vol_b = chip.volume_table[AY_BVOL ? AY_BVOL*2+1 : 0];
 		}
 		break;
 
 	case REG_CVOL:
 		AY_CVOL &= 31;
-		ay->envelope_c = AY_CVOL & 0x10;
-		if (ay->envelope_c) {
-			ay->vol_c = ay->vol_e;
+		chip.envelope_c = AY_CVOL & 0x10;
+		if (chip.envelope_c) {
+			chip.vol_c = chip.vol_e;
 		} else {
-			ay->vol_c = ay->volume_table[AY_CVOL ? AY_CVOL*2+1 : 0];
+			chip.vol_c = chip.volume_table[AY_CVOL ? AY_CVOL*2+1 : 0];
 		}
 		break;
 	case REG_EFINE:
 	case REG_ECOARSE:
-		old = ay->period_e;
-		ay->period_e = (AY_EFINE + 256 * AY_ECOARSE) * ay->update_step;
-		if (0 == ay->period_e)
-			ay->period_e = ay->update_step / 2;
-		ay->count_e += ay->period_e - old;
-		if (ay->count_e <= 0)
-			ay->count_e = 1;
+		old = chip.period_e;
+		chip.period_e = (AY_EFINE + 256 * AY_ECOARSE) * chip.update_step;
+		if (0 == chip.period_e)
+			chip.period_e = chip.update_step / 2;
+		chip.count_e += chip.period_e - old;
+		if (chip.count_e <= 0)
+			chip.count_e = 1;
 		LOG((LL,"AY8910","envelope period 0x%x, count 0x%x\n",
-			ay->period_e, ay->count_e));
+			chip.period_e, chip.count_e));
 		break;
 
 	case REG_ESHAPE:
@@ -278,151 +275,135 @@ void _ay8910_reg_w(uint32_t chip, uint32_t reg, uint32_t data)
 		 * we always use the YM2149 behaviour.
 		 */
 		AY_ESHAPE &= 0x0f;
-		ay->attack = (AY_ESHAPE & 0x04) ? 31 : 0;
+		chip.attack = (AY_ESHAPE & 0x04) ? 31 : 0;
 		if (0 == (AY_ESHAPE & 0x08)) {
 			/* if Continue = 0, map the shape to the
 			 * equivalent one which has Continue = 1
 			 */
-			ay->hold = 1;
-			ay->alternate = ay->attack;
+			chip.hold = 1;
+			chip.alternate = chip.attack;
 		} else {
-			ay->hold = AY_ESHAPE & 0x01;
-			ay->alternate = AY_ESHAPE & 0x02;
+			chip.hold = AY_ESHAPE & 0x01;
+			chip.alternate = AY_ESHAPE & 0x02;
 		}
-		ay->count_e = ay->period_e;
-		ay->count_env = 31;
-		ay->holding = 0;
-		ay->vol_e = ay->volume_table[ay->count_env ^ ay->attack];
-		if (ay->envelope_a)
-			ay->vol_a = ay->vol_e;
-		if (ay->envelope_b)
-			ay->vol_b = ay->vol_e;
-		if (ay->envelope_c)
-			ay->vol_c = ay->vol_e;
+		chip.count_e = chip.period_e;
+		chip.count_env = 31;
+		chip.holding = 0;
+		chip.vol_e = chip.volume_table[chip.count_env ^ chip.attack];
+		if (chip.envelope_a)
+			chip.vol_a = chip.vol_e;
+		if (chip.envelope_b)
+			chip.vol_b = chip.vol_e;
+		if (chip.envelope_c)
+			chip.vol_c = chip.vol_e;
 		break;
 
 	case REG_PORTA:
 		if (0 == (AY_ENABLE & 0x40)) {
-			LOG((1,"AY8910","warning: write to 8910 #%d port A set as input - ignored\n",
-				chip));
+			LOG((1,"AY8910","warning: write to 8910 port A set as input - ignored\n"));
 			break;
 		}
-		if (NULL == ay->port_a_w) {
-			LOG((1,"AY8910","warning - write %02x to 8910 #%d port A\n",
-				AY_PORTA, chip));
+		if (NULL == chip.port_a_w) {
+			LOG((1,"AY8910","warning - write %02x to 8910 port A\n", AY_PORTA));
 			break;
 		}
-		(*ay->port_a_w)(0, AY_PORTA);
+		(*chip.port_a_w)(0, AY_PORTA);
 		break;
 
 	case REG_PORTB:
 		if (0 == (AY_ENABLE & 0x80)) {
-			LOG((1,"AY8910","warning: write to 8910 #%d port B set as input - ignored\n",
-				chip));
+			LOG((1,"AY8910","warning: write to 8910 port B set as input - ignored\n"));
 			break;
 		}
-		if (NULL == ay->port_b_w) {
-			LOG((1,"AY8910","warning - write %02x to 8910 #%d port B\n",
-				AY_PORTB, chip));
+		if (NULL == chip.port_b_w) {
+			LOG((1,"AY8910","warning - write %02x to 8910 port B\n", AY_PORTB));
 			break;
 		}
-		(*ay->port_b_w)(0, AY_PORTB);
+		(*chip.port_b_w)(0, AY_PORTB);
 		break;
 	}
 }
 
 
-/* write a register on ay8910 chip number 'n' */
-void ay8910_reg_w(uint32_t chip, uint32_t reg, uint32_t data)
+/* write a register on ay8910 chip */
+void ay8910_reg_w(uint32_t reg, uint32_t data)
 {
-	chip_ay8910_t *ay = &chips[chip];
-
 	if (reg >= REG_COUNT)
 		return;
 	if (reg < REG_PORTA) {
-		if (reg == REG_ESHAPE || data != ay->regs[reg]) {
+		if (reg == REG_ESHAPE || data != chip.regs[reg]) {
 			/* update the output buffer before changing the register */
 			tmr_t *frame_timer = sys_get_frame_timer();
-			uint32_t pos = (uint32_t)(tmr_elapsed(frame_timer) * ay->audio_samples / frame_timer->restart);
+			uint32_t pos = (uint32_t)(tmr_elapsed(frame_timer) * chip.audio_samples / frame_timer->restart);
 			uint32_t length;
-			length = pos - ay->audio_pos;
-			if (pos > ay->audio_pos && pos <= ay->audio_samples) {
-				ay8910_update(chip, ay->audio_stream + ay->audio_pos, length);
-				ay->audio_pos = pos;
+			length = pos - chip.audio_pos;
+			if (pos > chip.audio_pos && pos <= chip.audio_samples) {
+				ay8910_update(chip.audio_stream + chip.audio_pos, length);
+				chip.audio_pos = pos;
 			}
 		}
 	}
 
-	_ay8910_reg_w(chip, reg, data);
+	_ay8910_reg_w(reg, data);
 }
 
 
 
-uint32_t ay8910_reg_r(uint32_t chip, uint32_t reg)
+uint32_t ay8910_reg_r(uint32_t reg)
 {
-	chip_ay8910_t *ay = &chips[chip];
-
-
 	if (reg >= REG_COUNT)
 		return 0;
 
 	switch (reg) {
 	case REG_PORTA:
 		if (0 != (AY_ENABLE & 0x40)) {
-			LOG((LL,"AY8910","warning: read from 8910 #%d port A set as output\n",
-				chip));
+			LOG((LL,"AY8910","warning: read from 8910 port A set as output\n"));
 		}
 		/*
 		 * even if the port is set as output, we still need to
 		 * return the external data. Some games, like kidniki,
 		 * need this to work.
 		 */
-		if (NULL != ay->port_a_r) {
-			AY_PORTA = (*ay->port_a_r)(0);
+		if (NULL != chip.port_a_r) {
+			AY_PORTA = (*chip.port_a_r)(0);
 		} else {
-			LOG((1,"AY8910","warning - read 8910 #%d port A\n", chip));
+			LOG((1,"AY8910","warning - read 8910 port A\n"));
 		}
 		break;
 
 	case REG_PORTB:
 		if (0 != (AY_ENABLE & 0x80)) {
-			LOG((LL,"AY8910","warning: read from 8910 #%d port B set as output\n",
-				chip));
+			LOG((LL,"AY8910","warning: read from 8910 port B set as output\n"));
 		}
-		if (NULL != ay->port_b_r) {
-			AY_PORTB = (*ay->port_b_r)(0);
+		if (NULL != chip.port_b_r) {
+			AY_PORTB = (*chip.port_b_r)(0);
 		} else {
-			LOG((1,"AY8910","warning - read 8910 #%d port B\n", chip));
+			LOG((1,"AY8910","warning - read 8910 port B\n"));
 		}
 		break;
 	}
-	return ay->regs[reg];
+	return chip.regs[reg];
 }
 
 
-void ay8910_w(uint32_t chip, uint32_t offset, uint32_t data)
+void ay8910_w(uint32_t offset, uint32_t data)
 {
-	chip_ay8910_t *ay = &chips[chip];
-
 	if (offset & 1) {
 		/* data port */
-		ay8910_reg_w(chip, ay->latch, data);
+		ay8910_reg_w(chip.latch, data);
 	} else {
 		/* register port */
-		ay->latch = data & 0x0f;
+		chip.latch = data & 0x0f;
 	}
 }
 
-int ay8910_r(uint32_t chip)
+int ay8910_r()
 {
-	chip_ay8910_t *ay = &chips[chip];
-
-	return ay8910_reg_r(chip, ay->latch);
+	return ay8910_reg_r(chip.latch);
 }
 
-static void ay8910_update(uint32_t chip, int16_t *buffer, uint32_t length)
+static void ay8910_update(int16_t *buffer, uint32_t length)
 {
-	chip_ay8910_t *ay = &chips[chip];
 	int outl = length;
 	int outn;
 	int sum;
@@ -449,35 +430,35 @@ static void ay8910_update(uint32_t chip, int16_t *buffer, uint32_t length)
 	 * the output.
 	 */
 	if (AY_ENABLE & 0x01) {
-		if (ay->count_a <= outl * STEP)
-			ay->count_a += outl * STEP;
-		ay->output_a = 1;
+		if (chip.count_a <= outl * STEP)
+			chip.count_a += outl * STEP;
+		chip.output_a = 1;
 	} else if (0 == AY_AVOL) {
 		/* Note that I do count += length, NOT count = length + 1.
 		 * You might think it's the same since the volume is 0,
 		 * but doing the latter could cause interferencies when
 		 * the program is rapidly modulating the volume.
 		 */
-		if (ay->count_a <= outl * STEP)
-			ay->count_a += outl * STEP;
+		if (chip.count_a <= outl * STEP)
+			chip.count_a += outl * STEP;
 	}
 
 	if (AY_ENABLE & 0x02) {
-		if (ay->count_b <= outl * STEP)
-			ay->count_b += outl * STEP;
-		ay->output_b = 1;
+		if (chip.count_b <= outl * STEP)
+			chip.count_b += outl * STEP;
+		chip.output_b = 1;
 	} else if (0 == AY_BVOL) {
-		if (ay->count_b <= outl * STEP)
-			ay->count_b += outl * STEP;
+		if (chip.count_b <= outl * STEP)
+			chip.count_b += outl * STEP;
 	}
 
 	if (AY_ENABLE & 0x04) {
-		if (ay->count_c <= outl * STEP)
-			ay->count_c += outl * STEP;
-		ay->output_c = 1;
+		if (chip.count_c <= outl * STEP)
+			chip.count_c += outl * STEP;
+		chip.output_c = 1;
 	} else if (0 == AY_CVOL) {
-		if (ay->count_c <= outl * STEP)
-			ay->count_c += outl * STEP;
+		if (chip.count_c <= outl * STEP)
+			chip.count_c += outl * STEP;
 	}
 
 	/*
@@ -485,10 +466,10 @@ static void ay8910_update(uint32_t chip, int16_t *buffer, uint32_t length)
 	 * it's also not necessary since we use outn.
 	 */
 	if (0x38 == (AY_ENABLE & 0x38))	/* all off */
-		if (ay->count_n <= outl * STEP)
-			ay->count_n += outl * STEP;
+		if (chip.count_n <= outl * STEP)
+			chip.count_n += outl * STEP;
 
-	outn = ay->output_n | AY_ENABLE;
+	outn = chip.output_n | AY_ENABLE;
 
 	/* buffering loop */
 	while (length > 0) {
@@ -502,12 +483,12 @@ static void ay8910_update(uint32_t chip, int16_t *buffer, uint32_t length)
 		int left = STEP;
 
 		do {
-			int nextevent = (ay->count_n < left) ? ay->count_n : left;
+			int nextevent = (chip.count_n < left) ? chip.count_n : left;
 
 			if (outn & 0x08) {
-				if (0 != ay->output_a)
-					vola += ay->count_a;
-				ay->count_a -= nextevent;
+				if (0 != chip.output_a)
+					vola += chip.count_a;
+				chip.count_a -= nextevent;
 
 				/*
 				 * period_a is the half period of the square
@@ -524,96 +505,96 @@ static void ay8910_update(uint32_t chip, int16_t *buffer, uint32_t length)
 				 * incremented only if the exit status of
 				 * the square wave is 1.
 				 */
-				while (ay->count_a <= 0) {
-					ay->count_a += ay->period_a;
-					if (ay->count_a > 0) {
-						ay->output_a ^= 1;
-						if (0 != ay->output_a)
-							vola += ay->period_a;
+				while (chip.count_a <= 0) {
+					chip.count_a += chip.period_a;
+					if (chip.count_a > 0) {
+						chip.output_a ^= 1;
+						if (0 != chip.output_a)
+							vola += chip.period_a;
 						break;
 					}
-					ay->count_a += ay->period_a;
-					vola += ay->period_a;
+					chip.count_a += chip.period_a;
+					vola += chip.period_a;
 				}
-				if (0 != ay->output_a)
-					vola -= ay->count_a;
+				if (0 != chip.output_a)
+					vola -= chip.count_a;
 			} else {
-				ay->count_a -= nextevent;
-				while (ay->count_a <= 0) {
-					ay->count_a += ay->period_a;
-					if (ay->count_a > 0) {
-						ay->output_a ^= 1;
+				chip.count_a -= nextevent;
+				while (chip.count_a <= 0) {
+					chip.count_a += chip.period_a;
+					if (chip.count_a > 0) {
+						chip.output_a ^= 1;
 						break;
 					}
-					ay->count_a += ay->period_a;
+					chip.count_a += chip.period_a;
 				}
 			}
 
 			if (outn & 0x10) {
-				if (0 != ay->output_b)
-					volb += ay->count_b;
-				ay->count_b -= nextevent;
-				while (ay->count_b <= 0) {
-					ay->count_b += ay->period_b;
-					if (ay->count_b > 0) {
-						ay->output_b ^= 1;
-						if (0 != ay->output_b)
-							volb += ay->period_b;
+				if (0 != chip.output_b)
+					volb += chip.count_b;
+				chip.count_b -= nextevent;
+				while (chip.count_b <= 0) {
+					chip.count_b += chip.period_b;
+					if (chip.count_b > 0) {
+						chip.output_b ^= 1;
+						if (0 != chip.output_b)
+							volb += chip.period_b;
 						break;
 					}
-					ay->count_b += ay->period_b;
-					volb += ay->period_b;
+					chip.count_b += chip.period_b;
+					volb += chip.period_b;
 				}
-				if (0 != ay->output_b)
-					volb -= ay->count_b;
+				if (0 != chip.output_b)
+					volb -= chip.count_b;
 			} else {
-				ay->count_b -= nextevent;
-				while (ay->count_b <= 0) {
-					ay->count_b += ay->period_b;
-					if (ay->count_b > 0) {
-						ay->output_b ^= 1;
+				chip.count_b -= nextevent;
+				while (chip.count_b <= 0) {
+					chip.count_b += chip.period_b;
+					if (chip.count_b > 0) {
+						chip.output_b ^= 1;
 						break;
 					}
-					ay->count_b += ay->period_b;
+					chip.count_b += chip.period_b;
 				}
 			}
 
 			if (outn & 0x20) {
-				if (0 != ay->output_c)
-					volc += ay->count_c;
-				ay->count_c -= nextevent;
-				while (ay->count_c <= 0) {
-					ay->count_c += ay->period_c;
-					if (ay->count_c > 0) {
-						ay->output_c ^= 1;
-						if (0 != ay->output_c)
-							volc += ay->period_c;
+				if (0 != chip.output_c)
+					volc += chip.count_c;
+				chip.count_c -= nextevent;
+				while (chip.count_c <= 0) {
+					chip.count_c += chip.period_c;
+					if (chip.count_c > 0) {
+						chip.output_c ^= 1;
+						if (0 != chip.output_c)
+							volc += chip.period_c;
 						break;
 					}
-					ay->count_c += ay->period_c;
-					volc += ay->period_c;
+					chip.count_c += chip.period_c;
+					volc += chip.period_c;
 				}
-				if (0 != ay->output_c)
-					volc -= ay->count_c;
+				if (0 != chip.output_c)
+					volc -= chip.count_c;
 			} else {
-				ay->count_c -= nextevent;
-				while (ay->count_c <= 0) {
-					ay->count_c += ay->period_c;
-					if (ay->count_c > 0) {
-						ay->output_c ^= 1;
+				chip.count_c -= nextevent;
+				while (chip.count_c <= 0) {
+					chip.count_c += chip.period_c;
+					if (chip.count_c > 0) {
+						chip.output_c ^= 1;
 						break;
 					}
-					ay->count_c += ay->period_c;
+					chip.count_c += chip.period_c;
 				}
 			}
 
-			ay->count_n -= nextevent;
-			if (ay->count_n <= 0) {
+			chip.count_n -= nextevent;
+			if (chip.count_n <= 0) {
 				/* Is noise output going to change? */
-				if ((ay->prng + 1) & 2) {
+				if ((chip.prng + 1) & 2) {
 					/* (bit0^bit1) */
-					ay->output_n = ~ay->output_n;
-					outn = ay->output_n | AY_ENABLE;
+					chip.output_n = ~chip.output_n;
+					outn = chip.output_n | AY_ENABLE;
 				}
 
 				/*
@@ -636,55 +617,55 @@ static void ay8910_update(uint32_t chip, int16_t *buffer, uint32_t length)
 				 */
 
 				 /* This version is called the "Galois configuration". */
-				if (0 != (ay->prng & 1))
-					ay->prng ^= 0x24000;
-				ay->prng >>= 1;
-				ay->count_n += ay->period_n;
+				if (0 != (chip.prng & 1))
+					chip.prng ^= 0x24000;
+				chip.prng >>= 1;
+				chip.count_n += chip.period_n;
 			}
 
 			left -= nextevent;
 		} while (left > 0);
 
 		/* update envelope */
-		if (0 == ay->holding) {
-			ay->count_e -= STEP;
-			if (ay->count_e <= 0) {
+		if (0 == chip.holding) {
+			chip.count_e -= STEP;
+			if (chip.count_e <= 0) {
 				do {
-					ay->count_env--;
-					ay->count_e += ay->period_e;
-				} while (ay->count_e <= 0);
+					chip.count_env--;
+					chip.count_e += chip.period_e;
+				} while (chip.count_e <= 0);
 
 				/* check envelope current position */
-				if (ay->count_env < 0) {
-					if (0 != ay->hold) {
-						if (0 != ay->alternate)
-							ay->attack ^= 31;
-						ay->holding = 1;
-						ay->count_env = 0;
+				if (chip.count_env < 0) {
+					if (0 != chip.hold) {
+						if (0 != chip.alternate)
+							chip.attack ^= 31;
+						chip.holding = 1;
+						chip.count_env = 0;
 					} else {
 						/* if count_env has looped
 						 * an odd number of times
 						 * (usually 1), invert the
 						 * output.
 						 */
-						if (0 != ay->alternate && 0 != (ay->count_env & 0x20))
- 							ay->attack ^= 31;
-						ay->count_env &= 31;
+						if (0 != chip.alternate && 0 != (chip.count_env & 0x20))
+ 							chip.attack ^= 31;
+						chip.count_env &= 31;
 					}
 				}
 
-				ay->vol_e = ay->volume_table[ay->count_env ^ ay->attack];
+				chip.vol_e = chip.volume_table[chip.count_env ^ chip.attack];
 				/* reload volumes */
-				if (ay->envelope_a)
-					ay->vol_a = ay->vol_e;
-				if (ay->envelope_b)
-					ay->vol_b = ay->vol_e;
-				if (ay->envelope_c)
-					ay->vol_c = ay->vol_e;
+				if (chip.envelope_a)
+					chip.vol_a = chip.vol_e;
+				if (chip.envelope_b)
+					chip.vol_b = chip.vol_e;
+				if (chip.envelope_c)
+					chip.vol_c = chip.vol_e;
 			}
 		}
 
-		sum = (vola * ay->vol_a + volb * ay->vol_b + volc * ay->vol_c) / STEP;
+		sum = (vola * chip.vol_a + volb * chip.vol_b + volc * chip.vol_c) / STEP;
 		if (sum < -32767)
 			*buffer = -32767;
 		else if (sum > 32767)
@@ -699,23 +680,16 @@ static void ay8910_update(uint32_t chip, int16_t *buffer, uint32_t length)
 
 void ay8910_update_stream(void)
 {
-	uint32_t chip;
 	uint32_t length;
 
-	/* XXX: this doesn't work for > 1 chip (need a mixer) */
-	for (chip = 0; chip < num; chip++) {
-		chip_ay8910_t *ay = &chips[chip];
-		length = ay->audio_samples - ay->audio_pos;
-		ay8910_update(chip, ay->audio_stream + ay->audio_pos, length);
-		osd_update_audio_stream(ay->audio_stream);
-		ay->audio_pos = 0;
-	}
+	length = chip.audio_samples - chip.audio_pos;
+	ay8910_update(chip.audio_stream + chip.audio_pos, length);
+	osd_update_audio_stream(chip.audio_stream);
+	chip.audio_pos = 0;
 }
 
-void ay8910_set_clock(uint32_t chip, uint32_t clk)
+void ay8910_set_clock(uint32_t clk)
 {
-	chip_ay8910_t *ay = &chips[chip];
-
 	/*
 	 * The step clock for the tone and noise generators is the chip clock
 	 * divided by 8; for the envelope generator of the AY-3-8910,
@@ -727,14 +701,13 @@ void ay8910_set_clock(uint32_t chip, uint32_t clk)
 	 * STEP is a multiplier used to turn the fraction into a
 	 * fixed point number.
 	 */
-	ay->update_step = ((double)STEP * ay->sample_rate * 8 + clk/2) / clk;
-	LOG((LL,"AY8910","update step: %d\n", ay->update_step));
+	chip.update_step = ((double)STEP * chip.sample_rate * 8 + clk/2) / clk;
+	LOG((LL,"AY8910","update step: %d\n", chip.update_step));
 }
 
 
-static void build_mixer_table(uint32_t chip)
+static void build_mixer_table(void)
 {
-	chip_ay8910_t *ay = &chips[chip];
 	int i;
 	double out;
 
@@ -747,24 +720,23 @@ static void build_mixer_table(uint32_t chip)
 	out = MAX_OUTPUT;
 	for (i = 31; i > 0; i--) {
 		/* round to nearest */
-		ay->volume_table[i] = out + 0.5;
+		chip.volume_table[i] = out + 0.5;
 		out /= 1.188502227;	/* = 10 ^ (1.5/20) = 1.5dB */
 	}
-	ay->volume_table[0] = 0;
+	chip.volume_table[0] = 0;
 }
 
-void ay8910_reset(uint32_t chip)
+void ay8910_reset(void)
 {
 	int i;
-	chip_ay8910_t *ay = &chips[chip];
 
-	ay->latch = 0;
-	ay->prng = 1;
-	ay->output_a = 0;
-	ay->output_b = 0;
-	ay->output_c = 0;
-	ay->output_n = 0xff;
-	ay->last_enable = -1;	/* force a write */
+	chip.latch = 0;
+	chip.prng = 1;
+	chip.output_a = 0;
+	chip.output_b = 0;
+	chip.output_c = 0;
+	chip.output_n = 0xff;
+	chip.last_enable = -1;	/* force a write */
 
 	/*
 	 * ay8910_reg_w() (without the leading underscore) uses
@@ -772,82 +744,48 @@ void ay8910_reset(uint32_t chip)
 	 * because the timer system has not been initialized.
 	 */
 	for (i = 0; i < REG_PORTA; i++)
-		_ay8910_reg_w(chip, i, 0);
+		_ay8910_reg_w(i, 0);
 }
 
-void ay8910_sh_reset(void)
-{
-	uint32_t i;
-
-	for (i = 0; i < num; i++)
-		ay8910_reset(i);
-}
-
-static int ay8910_init(uint32_t chip, int clock, int sample_rate,
+static int ay8910_init(int clock, int sample_rate,
 	uint8_t (*port_a_r)(uint32_t), uint8_t (*port_b_r)(uint32_t),
 	void (*port_a_w)(uint32_t,uint8_t), void (*port_b_w)(uint32_t,uint8_t))
 {
-	chip_ay8910_t *ay = &chips[chip];
+	memset(&chip,0,sizeof(chip_ay8910_t));
+	chip.sample_rate = sample_rate;
+	chip.port_a_r = port_a_r;
+	chip.port_b_r = port_b_r;
+	chip.port_a_w = port_a_w;
+	chip.port_b_w = port_b_w;
 
-	memset(ay,0,sizeof(chip_ay8910_t));
-	ay->sample_rate = sample_rate;
-	ay->port_a_r = port_a_r;
-	ay->port_b_r = port_b_r;
-	ay->port_a_w = port_a_w;
-	ay->port_b_w = port_b_w;
+	ay8910_set_clock(clock);
+	ay8910_reset();
 
-	ay8910_set_clock(chip, clock);
-	ay8910_reset(chip);
-
-	ay->audio_samples = osd_start_audio_stream(0);
-	if (ay->audio_samples < 0)
+	chip.audio_samples = osd_start_audio_stream(0);
+	if (chip.audio_samples < 0)
 		return -1;
-	ay->audio_stream = calloc(ay->audio_samples + 2, sizeof(int16_t));
-	ay->audio_pos = 0;
+	chip.audio_stream = calloc(chip.audio_samples + 2, sizeof(int16_t));
+	chip.audio_pos = 0;
 
 	return 0;
 }
 
 
-int ay8910_sh_start(const ifc_ay8910_t *ifc)
+int ay8910_start(const ifc_ay8910_t *ifc)
 {
-	uint32_t chip;
-
-	num = ifc->num;
-	for (chip = 0; chip < num; chip++) {
-		int rc = ay8910_init(chip, ifc->baseclock, osd_get_sample_rate(),
-			ifc->port_a_r[chip], ifc->port_b_r[chip],
-			ifc->port_a_w[chip], ifc->port_b_w[chip]);
-		if (0 != rc)
-			return rc;
-		build_mixer_table(chip);
-	}
+	int rc = ay8910_init(ifc->baseclock, osd_get_sample_rate(),
+		ifc->port_a_r, ifc->port_b_r,
+		ifc->port_a_w, ifc->port_b_w);
+	if (0 != rc)
+		return rc;
+	build_mixer_table();
 
 	return 0;
-}
-
-void ay8910_sh_stop(void)
-{
-	uint32_t chip;
-	for (chip = 0; chip < num; chip++) {
-		chip_ay8910_t *ay = &chips[chip];
-		if (NULL != ay->audio_stream) {
-			free(ay->audio_stream);
-			ay->audio_stream = NULL;
-			ay->audio_samples = 0;
-			ay->audio_pos = 0;
-		}
-	}
-	osd_stop_audio_stream();
-	num = 0;
 }
 
 /* AY8910 interface */
-uint8_t ay8910_read_port_0_r(uint32_t offset) { return ay8910_r(0); }
-uint8_t ay8910_read_port_1_r(uint32_t offset) { return ay8910_r(1); }
+uint8_t ay8910_read_port_0_r(uint32_t offset) { return ay8910_r(); }
 
-void ay8910_control_port_0_w(uint32_t offset, uint8_t data) { ay8910_w(0,0,data); }
-void ay8910_control_port_1_w(uint32_t offset, uint8_t data) { ay8910_w(1,0,data); }
+void ay8910_control_port_0_w(uint32_t offset, uint8_t data) { ay8910_w(0,data); }
 
-void ay8910_write_port_0_w(uint32_t offset, uint8_t data) { ay8910_w(0,1,data); }
-void ay8910_write_port_1_w(uint32_t offset, uint8_t data) { ay8910_w(1,1,data); }
+void ay8910_write_port_0_w(uint32_t offset, uint8_t data) { ay8910_w(1,data); }

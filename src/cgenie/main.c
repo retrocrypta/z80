@@ -259,7 +259,6 @@ static uint8_t cgenie_port_a_r(uint32_t offset);
 static uint8_t cgenie_port_b_r(uint32_t offset);
 static void cgenie_port_a_w(uint32_t offset, uint8_t data);
 static void cgenie_port_b_w(uint32_t offset, uint8_t data);
-static int cgenie_audio(void);
 static void cgenie_clock(uint32_t param);
 static void cgenie_scan(uint32_t param);
 
@@ -353,13 +352,12 @@ static ifc6845_t mc6845 = {
 
 /** @brief AY8910 audio chip interface structure */
 static ifc_ay8910_t ay8910 = {
-	1,			/* number of chips */
-	2000000.0,		/* baseclock 1 MHz */
-	{0xffff},		/* mixing level */
-	{cgenie_port_a_r},	/* port A read handler */
-	{cgenie_port_b_r},	/* port B read handler */
-	{cgenie_port_a_w},	/* port A write handler */
-	{cgenie_port_b_w}	/* port B write handler */
+	2000000.0,       /* baseclock 1 MHz */
+	0xffff,          /* mixing level */
+	cgenie_port_a_r, /* port A read handler */
+	cgenie_port_b_r, /* port B read handler */
+	cgenie_port_a_w, /* port A write handler */
+	cgenie_port_b_w	 /* port B write handler */
 };
 
 /** @brief reset the system */
@@ -377,7 +375,7 @@ void sys_reset(reset_t how)
 		cgenie_fdc_stop();
 		cgenie_cas_stop();
 		z80_reset(cpu);
-		ay8910_reset(0);
+		ay8910_reset();
 		cgenie_cas_init();
 		cgenie_fdc_init();
 		break;
@@ -1282,12 +1280,6 @@ static void cgenie_port_b_w(uint32_t offset, uint8_t data)
 	(void)data;
 }
 
-static int cgenie_audio(void)
-{
-	osd_set_refresh_rate(50.0);
-	return ay8910_sh_start(&ay8910);
-}
-
 static void cgenie_clock(uint32_t param)
 {
 	cgenie_timer_interrupt();
@@ -1311,12 +1303,13 @@ int main(int argc, char **argv)
 
 	if (osd_init(cgenie_resize_ext, NULL, cgenie_key_dn, cgenie_key_up, argc, argv))
 		return 1;
+	osd_set_refresh_rate(50.0);
 
 	if (cgenie_screen() < 0) {
 		printf("Screen init: failed\n");
 		return 1;
 	}
-	if (cgenie_audio() < 0) {
+	if (ay8910_start(&ay8910) < 0) {
 		printf("Audio init: failed\n");
 		return 2;
 	}
