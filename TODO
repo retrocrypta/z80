@@ -1,4 +1,9 @@
 * at maximized/fullscreen window: vertical black lines between pixels in FGR mode
-* Accessing 6845 registers causes application to slow down on weak machines
-  guessed: mc6845.c/319: int32_t mc6845_w(uint32_t chip, uint32_t offset, uint8_t data)
-  avoid calling sys_set_full_refresh at least for double buffered applications
+* sdl2 port:
+    * video: render to surface unstretched pixel / let gpu stretch to window size
+    * sound: render sound in the sound task make use of atomic functions
+    * android port??
+* use sdl2_image/guisan to create GUIs for
+    * CPU status/debug/frequency-control
+    * Makros e.g to load cas/floppy
+
