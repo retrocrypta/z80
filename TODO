@@ -1,9 +1,13 @@
-* tearing when changing background colour and moving window / test cargo
-* sdl2 port:
-    * video: render to surface unstretched pixel / let gpu stretch to window size
-    * sound: render sound in the sound task make use of atomic functions
-    * android port??
-* use sdl2_image/guisan to create GUIs for
-    * CPU status/debug/frequency-control
-    * Makros e.g to load cas/floppy
+1. sdl2 port:
+    * online TV/monitor display mode switching
+    * performance rendering / tests resize + hide by other windows on both machines
+    * character programming flicker is almost gone -> frame frquency 25Hz (closer to PAL anyway)
 
+2. features:
+    * gui either homebrew or sdl2_image/guisan
+        * CPU status / debug / disassembler / frequency control
+        * Sound VU / disable single sound channels
+    * snapshot: save whole machine state
+    * recorder: snapshot + track user interactions with cpu (or frame) timestamp
+
+3. android port??

@@ -84,7 +84,6 @@ char *cdata = NULL;
 static void xml_start_cassette(const XML_Char **atts)
 {
 	const XML_Char **att;
-	int rc;
 
 	if (NULL != cas_name) {
 		free(cas_name);
@@ -123,7 +122,7 @@ static void xml_start_cassette(const XML_Char **atts)
 
 	for (att = atts; *att; att += 2) {
 		if (!strcasecmp(att[0], "sha1")) {
-			rc = sha1_strhex(&xml_digest, att[1]);
+			sha1_strhex(&xml_digest, att[1]);
 			continue;
 		}
 		fprintf(stderr, "ignored %s attribute %s=%s...\n",

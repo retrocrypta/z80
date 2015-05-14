@@ -1,6 +1,6 @@
 To compile you need:
 - GNU C compiler and linker
-- SDL (http://www.libsdl.org) library installed
+- SDL2 (http://www.libsdl.org) library installed
 
 To build look into Makefile and make adjustments,
 then issue "make" (or "gmake").

@@ -4,6 +4,7 @@
  * trs80.c	Tandy TRS-80 emulation
  *
  * Copyright by Juergen Buchmueller <pullmoll@t-online.de>
+ * Copyright 2015 Andreas Müller <schnitzeltony@googlemail.com>
  *
  ***************************************************************************************/
 #include "z80.h"
@@ -13,6 +14,9 @@
 #include "trs80/cas.h"
 #include "trs80/fdc.h"
 #include "wd179x.h"
+#include "osd.h"
+#include "osd_bitmap.h"
+#include "osd_font.h"
 
 #define	FONT_W	6
 #define	FONT_H	15
@@ -38,14 +42,8 @@ static const char trs80_chr[] = "trs80.chr";
 /** @brief character generator */
 static uint8_t chargen[256 * FONT_H];
 
-/** @brief bitmap containing the scaled font */
-static osd_bitmap_t *font = NULL;
-
-/** @brief font glyph width */
-static int32_t font_w = FONT_W;
-
-/** @brief font glyph height */
-static int32_t font_h = FONT_H;
+/** @brief rendered font */
+static osd_font_t *font;
 
 /** @brief left offset of first pixel */
 static int32_t screen_x = 0;
@@ -79,6 +77,11 @@ static tmr_t *frame_timer;
 
 /** @brief clock timer (40 Hz) */
 static tmr_t *clock_timer;
+
+typedef enum {
+	C_BLACK,
+	C_WHITE,
+}	trs80_colour_t;
 
 /** @brief colors for background and foreground */
 static uint32_t colors[2];
@@ -137,7 +140,7 @@ void *sys_get_frame_timer(void)
 	return frame_timer;
 }
 
-void sys_cpu_panel_init(void *bitmap)
+/*void sys_cpu_panel_init(void *bitmap)
 {
 	osd_bitmap_t *cpu_panel = (osd_bitmap_t *)bitmap;
 	int32_t x;
@@ -172,9 +175,9 @@ void sys_cpu_panel_init(void *bitmap)
 	x += 54;
 	osd_widget_alloc(cpu_panel, x, y, 52, 12, 0xbf, 0xbf, 0xbf, BT_STATIC, CPU_PC,  "PC: 0000");
 	x += 54;
-}
+}*/
 
-void sys_cpu_panel_update(void *bitmap)
+/*void sys_cpu_panel_update(void *bitmap)
 {
 	osd_bitmap_t *cpu_panel = (osd_bitmap_t *)bitmap;
 	osd_widget_text(cpu_panel, CPU_BC,  "BC: %04x", z80_get_reg(&z80, Z80_BC));
@@ -189,7 +192,7 @@ void sys_cpu_panel_update(void *bitmap)
 	osd_widget_text(cpu_panel, CPU_DE2, "DE' %04x", z80_get_reg(&z80, Z80_DE2));
 	osd_widget_text(cpu_panel, CPU_HL2, "HL' %04x", z80_get_reg(&z80, Z80_HL2));
 	osd_widget_text(cpu_panel, CPU_AF2, "AF' %04x", z80_get_reg(&z80, Z80_AF2));
-}
+}*/
 
 /** @brief mark a video RAM location dirty */
 static __inline void set_video_ram_dirty(uint32_t offset, uint32_t mask)
@@ -465,7 +468,7 @@ void trs80_frame(uint32_t param)
 {
 	uint32_t offset;
 	uint8_t data;
-	int32_t sx, sy, dx, dy;
+	int32_t dx, dy;
 
 	while (audio_pos++ < audio_samples)
 		audio_stream[audio_pos] = audio_value;
@@ -484,11 +487,9 @@ void trs80_frame(uint32_t param)
 		if (data < 0x20)
 			data |= 0x40;
 
-		dx = (offset % SCREENW) * font_w + screen_x;
-		dy = (offset / SCREENW) * font_h + screen_y;
-		sx = data % 16 * font_w;
-		sy = data / 16 * font_h;
-		osd_blit(frame, font, sx, sy, font_w, font_h, dx, dy);
+		dx = (offset % SCREENW) * FONT_W + screen_x;
+		dy = (offset / SCREENW) * FONT_H + screen_y;
+		osd_font_blit(font, frame, colors, dx, dy, data, 1, 1);
 	}
 	memset(video_ram_dirty, 0, sizeof(video_ram_dirty));
 	dirty_all = 0;
@@ -496,60 +497,25 @@ void trs80_frame(uint32_t param)
 	stop = osd_update(osd_skip_next_frame());
 }
 
-int trs80_resize(int32_t w, int32_t h)
+static void trs80_update_colors()
 {
-	int32_t x, y, dx, dy, ch;
-	uint8_t sx[128], sy[128];
-	uint32_t white;
+	uint8_t r, g, b;
 
-	font_w = w / SCREENW;
-	font_h = h / SCREENH;
-	screen_x = (w - font_w * SCREENW) / 2;
-	screen_y = (h - font_h * SCREENH) / 2;
-
-	for (x = 0; x < font_w; x++)
-		sx[x] = FONT_W * x / font_w;
-	for (y = 0; y < font_h; y++)
-		sy[y] = FONT_H * y / font_h;
-
-	osd_bitmap_free(&font);
-
-	w = 16 * font_w;
-	h = 16 * font_h;
-	osd_bitmap_alloc(&font, w, h, 8);
-	osd_set_colors(font, colors, 2);
-	white = osd_color(font, 255, 255, 255);
-
-	for (ch = 0; ch < 256; ch++) {
-		dx = (ch % 16) * font_w;
-		dy = (ch / 16) * font_h;
-		for (y = 0; y < font_h; y++) {
-			uint8_t b = chargen[ch * FONT_H + sy[y]];
-			for (x = 0; x < font_w; x++) {
-				if (b & (1 << (FONT_W - 1 - sx[x])))
-					osd_putpixel(font, dx + x, dy + y, white);
-			}
-		}
-	}
-
-	dirty_all = (uint32_t)-1;
-	return 0;
+	colors[C_BLACK] = oss_bitmap_get_pix_val(frame, 0  ,   0,   0, 255);
+	r =  48; g = 48; b = 48;
+	osd_align_colors_to_mode(&r, &g, &b);
+	colors[C_WHITE] = oss_bitmap_get_pix_val(frame, r, g, b, 255);
 }
 
 int trs80_screen(void)
 {
 	char filename[FILENAME_MAX];
 	int32_t ch, w, h, x, y, dx, dy, y0;
-	uint32_t white;
 	FILE *fp;
 
 	memset(chargen, 0, sizeof(chargen));
-	colors[0] = osd_rgb(  0,   0,   0);
-	colors[1] = osd_rgb(255, 255, 255);
-
 	snprintf(filename, sizeof(filename), "%s/%s",
 		sys_get_name(), trs80_chr);
-
 	fp = fopen(filename, "rb");
 	if (NULL == fp) {
 		fprintf(stderr, "fopen(\"%s\",\"%s\") failed\n",
@@ -557,6 +523,7 @@ int trs80_screen(void)
 		return -1;
 	}
 
+	/* generate character / graphics font */
 	for (ch = 0; ch < 128; ch++) {
 #if	1
 		switch (ch) {
@@ -593,46 +560,20 @@ int trs80_screen(void)
 		}
 	}
 
+	osd_font_alloc(&font, 256, FONT_W, FONT_H, FONT_DEPTH_1BPP);
+	osd_render_font(font,
+		chargen, /* bitmap data */
+		0,       /* first code */
+		256,     /* count */
+		1);      /* top aligned */
 
-	w = 16 * FONT_W * 4;
-	h = 16 * FONT_H * 4;
-	font = calloc(1, sizeof(osd_bitmap_t));
-	if (NULL == font) {
-		fprintf(stderr, "calloc(font) failed\n");
-		return -1;
-	}
-	osd_bitmap_alloc(&font, w, h, 8);
-	osd_set_colors(font, colors, 2);
-	white = osd_color(font, 255, 255, 255);
-	font->xscale = 4;
-	font->yscale = 4;
-	for (ch = 0; ch < 256; ch++) {
-		dx = (ch % 16) * FONT_W;
-		dy = (ch / 16) * FONT_H;
-		for (y = 0; y < FONT_H; y++) {
-			uint8_t b = chargen[ch * FONT_H + y];
-			for (x = 0; x < FONT_W; x++) {
-				if (b & (1 << (FONT_W - 1 - x)))
-					osd_putpixel(font, dx + x, dy + y, white);
-			}
-		}
-	}
-	font->xscale = 1;
-	font->yscale = 1;
-
-	w = SCREENW * font_w;
-	h = SCREENH * font_h;
-	osd_set_display(w, h);
-	w = w * osd_get_scale();
-	h = h * osd_get_scale();
-	if (osd_open_display(w, h, "TRS-80") < 0) {
+	w = SCREENW * FONT_W;
+	h = SCREENH * FONT_H;
+	if (osd_open_display(w, h, "TRS-80", trs80_update_colors) < 0) {
 		fprintf(stderr, "osd_open_display() failed\n");
 		return -1;
 	}
-	osd_set_colors(frame, colors, 2);
-	osd_set_colors(NULL, colors, 2);
-
-	trs80_resize(w, h);
+	trs80_update_colors();
 
 	return 0;
 }
@@ -683,7 +624,7 @@ int main(int argc, char **argv)
 	int dumpmem;
 	int i;
 
-	if (osd_init(trs80_resize, NULL, trs80_key_dn, trs80_key_up, argc, argv))
+	if (osd_init(NULL, trs80_key_dn, trs80_key_up, argc, argv))
 		return 1;
 	for (i = 1, dumpmem = 0; i < argc; i++)
 		if (!strcmp(argv[i], "-d"))

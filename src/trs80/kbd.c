@@ -134,115 +134,17 @@ trs80_keymap_t map[] = {
 	{SDLK_DELETE,		K_LEFT},
 	/* End of ASCII mapped keysyms */
 
-	/* International keyboard syms */
-	{SDLK_WORLD_0,		K_NONE},
-	{SDLK_WORLD_1,		K_NONE},
-	{SDLK_WORLD_2,		K_NONE},
-	{SDLK_WORLD_3,		K_NONE},
-	{SDLK_WORLD_4,		K_NONE},
-	{SDLK_WORLD_5,		K_NONE},
-	{SDLK_WORLD_6,		K_NONE},
-	{SDLK_WORLD_7,		K_NONE},
-	{SDLK_WORLD_8,		K_NONE},
-	{SDLK_WORLD_9,		K_NONE},
-	{SDLK_WORLD_10,		K_NONE},
-	{SDLK_WORLD_11,		K_NONE},
-	{SDLK_WORLD_12,		K_NONE},
-	{SDLK_WORLD_13,		K_NONE},
-	{SDLK_WORLD_14,		K_NONE},
-	{SDLK_WORLD_15,		K_NONE},
-	{SDLK_WORLD_16,		K_NONE},
-	{SDLK_WORLD_17,		K_NONE},
-	{SDLK_WORLD_18,		K_NONE},
-	{SDLK_WORLD_19,		K_NONE},
-	{SDLK_WORLD_20,		K_NONE},
-	{SDLK_WORLD_21,		K_NONE},
-	{SDLK_WORLD_22,		K_NONE},
-	{SDLK_WORLD_23,		K_NONE},
-	{SDLK_WORLD_24,		K_NONE},
-	{SDLK_WORLD_25,		K_NONE},
-	{SDLK_WORLD_26,		K_NONE},
-	{SDLK_WORLD_27,		K_NONE},
-	{SDLK_WORLD_28,		K_NONE},
-	{SDLK_WORLD_29,		K_NONE},
-	{SDLK_WORLD_30,		K_NONE},
-	{SDLK_WORLD_31,		K_NONE},
-	{SDLK_WORLD_32,		K_NONE},
-	{SDLK_WORLD_33,		K_NONE},
-	{SDLK_WORLD_34,		K_NONE},
-	{SDLK_WORLD_35,		K_NONE},
-	{SDLK_WORLD_36,		K_NONE},
-	{SDLK_WORLD_37,		K_NONE},
-	{SDLK_WORLD_38,		K_NONE},
-	{SDLK_WORLD_39,		K_NONE},
-	{SDLK_WORLD_40,		K_NONE},
-	{SDLK_WORLD_41,		K_NONE},
-	{SDLK_WORLD_42,		K_NONE},
-	{SDLK_WORLD_43,		K_NONE},
-	{SDLK_WORLD_44,		K_NONE},
-	{SDLK_WORLD_45,		K_NONE},
-	{SDLK_WORLD_46,		K_NONE},
-	{SDLK_WORLD_47,		K_NONE},
-	{SDLK_WORLD_48,		K_NONE},
-	{SDLK_WORLD_49,		K_NONE},
-	{SDLK_WORLD_50,		K_NONE},
-	{SDLK_WORLD_51,		K_NONE},
-	{SDLK_WORLD_52,		K_NONE},
-	{SDLK_WORLD_53,		K_NONE},
-	{SDLK_WORLD_54,		K_NONE},
-	{SDLK_WORLD_55,		K_NONE},
-	{SDLK_WORLD_56,		K_NONE},
-	{SDLK_WORLD_57,		K_NONE},
-	{SDLK_WORLD_58,		K_NONE},
-	{SDLK_WORLD_59,		K_NONE},
-	{SDLK_WORLD_60,		K_NONE},
-	{SDLK_WORLD_61,		K_NONE},
-	{SDLK_WORLD_62,		K_NONE},
-	{SDLK_WORLD_63,		K_NONE},
-	{SDLK_WORLD_64,		K_NONE},
-	{SDLK_WORLD_65,		K_NONE},
-	{SDLK_WORLD_66,		K_NONE},
-	{SDLK_WORLD_67,		K_LEFTBRACKET},		/* Auml */
-	{SDLK_WORLD_68,		K_NONE},
-	{SDLK_WORLD_69,		K_NONE},
-	{SDLK_WORLD_70,		K_NONE},
-	{SDLK_WORLD_71,		K_NONE},
-	{SDLK_WORLD_72,		K_NONE},
-	{SDLK_WORLD_73,		K_NONE},
-	{SDLK_WORLD_74,		K_NONE},
-	{SDLK_WORLD_75,		K_NONE},
-	{SDLK_WORLD_76,		K_NONE},
-	{SDLK_WORLD_77,		K_NONE},
-	{SDLK_WORLD_78,		K_NONE},
-	{SDLK_WORLD_79,		K_NONE},
-	{SDLK_WORLD_80,		K_NONE},
-	{SDLK_WORLD_81,		K_NONE},
-	{SDLK_WORLD_82,		K_NONE},
-	{SDLK_WORLD_83,		K_NONE},
-	{SDLK_WORLD_84,		K_NONE},
-	{SDLK_WORLD_85,		K_NONE},
-	{SDLK_WORLD_86,		K_BACKSLASH},		/* Ouml */
-	{SDLK_WORLD_87,		K_NONE},
-	{SDLK_WORLD_88,		K_NONE},
-	{SDLK_WORLD_89,		K_NONE},
-	{SDLK_WORLD_90,		K_NONE},
-	{SDLK_WORLD_91,		K_NONE},
-	{SDLK_WORLD_92,		K_RIGHTBRACKET},	/* Uuml */
-	{SDLK_WORLD_93,		K_NONE},
-	{SDLK_WORLD_94,		K_NONE},
-	{SDLK_WORLD_95,		K_NONE},
-
 	/* Numeric keypad */
-	{SDLK_KP0,		K_INSERT},
-	{SDLK_KP1,		K_END},
-	{SDLK_KP2,		K_DOWN},
-	{SDLK_KP3,		K_PAGEDOWN},
-	{SDLK_KP4,		K_LEFT},
-	{SDLK_KP5,		K_NONE},
-	{SDLK_KP6,		K_RIGHT},
-	{SDLK_KP7,		K_CLEAR},
-	{SDLK_KP8,		K_UP},
-	{SDLK_KP9,		K_PAGEUP},
+	{SDLK_KP_0,		K_INSERT},
+	{SDLK_KP_1,		K_END},
+	{SDLK_KP_2,		K_DOWN},
+	{SDLK_KP_3,		K_PAGEDOWN},
+	{SDLK_KP_4,		K_LEFT},
+	{SDLK_KP_5,		K_NONE},
+	{SDLK_KP_6,		K_RIGHT},
+	{SDLK_KP_7,		K_CLEAR},
+	{SDLK_KP_8,		K_UP},
+	{SDLK_KP_9,		K_PAGEUP},
 	{SDLK_KP_PERIOD,	K_DELETE},
 	{SDLK_KP_DIVIDE,	K_SLASH},
 	{SDLK_KP_MULTIPLY,	K_COLON | K_SHIFTED},
@@ -280,30 +182,19 @@ trs80_keymap_t map[] = {
 	{SDLK_F15,		K_NONE},
 
 	/* Key state modifier keys */
-	{SDLK_NUMLOCK,		K_NONE},
-	{SDLK_CAPSLOCK,		K_NONE},
-	{SDLK_SCROLLOCK,	K_NONE},
 	{SDLK_RSHIFT,		K_SHIFT},
 	{SDLK_LSHIFT,		K_SHIFT},
 	{SDLK_RCTRL,		K_CTRL},
 	{SDLK_LCTRL,		K_CTRL},
 	{SDLK_RALT,		K_ALT},
 	{SDLK_LALT,		K_ALT},
-	{SDLK_RMETA,		K_ALT},
-	{SDLK_LMETA,		K_ALT},
-	{SDLK_LSUPER,		K_NONE},
-	{SDLK_RSUPER,		K_NONE},
 	{SDLK_MODE,		K_NONE},
-	{SDLK_COMPOSE,		K_NONE},
 
 	/* Miscellaneous function keys */
 	{SDLK_HELP,		K_NONE},
-	{SDLK_PRINT,		K_NONE},
 	{SDLK_SYSREQ,		K_NONE},
-	{SDLK_BREAK,		K_NONE},
 	{SDLK_MENU,		K_NONE},
 	{SDLK_POWER,		K_NONE},
-	{SDLK_EURO,		K_NONE},
 	{SDLK_UNDO,		K_NONE},
 
 	{SDLK_UNKNOWN,		K_NONE}
@@ -372,11 +263,11 @@ void trs80_key_dn(void *cookie, osd_key_t *key)
 	int32_t i;
 
 #if	DUMP_KEYCODE
-	printf("keydn: %s sym:%#x uni:%#x '%c' ",
-		osd_key_name(key), key->sym, key->unicode, PRINTABLE(key->unicode));
+	printf("keydn: %s sym:%#x '%c' ",
+		osd_key_name(key), key->sym, PRINTABLE(key->sym));
 #endif
 	if (key->flags & OSD_KEY_UNICODE) {
-		switch (key->unicode) {
+		switch (key->sym) {
 		case   8: key_dn(key, K_LEFT); break;
 		case   9: key_dn(key, K_RIGHT); break;
 		case  13: key_dn(key, K_ENTER); break;
@@ -482,9 +373,9 @@ void trs80_key_dn(void *cookie, osd_key_t *key)
 		case 246: key_dn(key, K_RIGHTBRACKET); break; /* ouml */
 		case 252: key_dn(key, K_CARET); break; /* uuml */
 		default:
-			if (key->unicode)
-				printf("unicode: %d (%#x) %s\n",
-					key->unicode, key->unicode, osd_key_name(key));
+			if (key->sym)
+				printf("sym: %d (%#x) %s\n",
+					key->sym, key->sym, osd_key_name(key));
 			goto lookup;
 		}
 #if	DUMP_KEYCODE
@@ -521,8 +412,8 @@ lookup:
 void trs80_key_up(void *cookie, osd_key_t *key)
 {
 #if	DUMP_KEYCODE
-	printf("keyup: %s sym:%#x uni:%#x '%c' ",
-		osd_key_name(key), key->sym, key->unicode, PRINTABLE(key->unicode));
+	printf("keyup: %s sym:%#x '%c' ",
+		osd_key_name(key), key->sym, PRINTABLE(key->sym));
 #endif
 	key_up(key);
 #if	DUMP_KEYCODE

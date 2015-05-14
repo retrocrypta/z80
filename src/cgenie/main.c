@@ -4,6 +4,7 @@
  * main.c	Colour Genie EG2000 emulation
  *
  * Copyright by Juergen Buchmueller <pullmoll@t-online.de>
+ * Copyright 2015 Andreas Müller <schnitzeltony@googlemail.com>
  *
  ***************************************************************************************/
 #include "z80.h"
@@ -15,6 +16,9 @@
 #include "wd179x.h"
 #include "ay8910.h"
 #include "mc6845.h"
+#include "osd.h"
+#include "osd_bitmap.h"
+#include "osd_font.h"
 
 #define	LOAD_DOSEXT	0
 
@@ -82,7 +86,7 @@ static uint32_t frame_redraw;
 #define	FONT_RAM_SIZE	0x0400
 
 /** @brief rendered font */
-static osd_bitmap_t *font;
+static osd_font_t *font;
 
 typedef enum {
 	C_GRAY,
@@ -104,11 +108,14 @@ typedef enum {
 	C_BACKGROUND
 }	cgenie_colour_t;
 
-/** @brief text mode palette colors */
-static uint32_t pal_txt[16+1];
+/** @brief text mode colors */
+static uint32_t color_txt[16+1];
 
-/** @brief graphics mode palette colors */
-static uint32_t pal_gfx[4];
+/** @brief graphics mode colors */
+static uint32_t color_gfx[4];
+
+/** @brief character definition flicker white */
+static uint32_t color_white;
 
 /** @brief non-zero if in graphics mod */
 static uint32_t gfx_mode;
@@ -118,12 +125,6 @@ static uint32_t font_base[4];
 
 /** @brief character generator raw data */
 static uint8_t chargen[256 * 8];
-
-/** @brief font glyph width */
-static int32_t font_w = 8;
-
-/** @brief font glyph height */
-static int32_t font_h = 8;
 
 /** @brief screen character columns */
 static uint32_t screen_w = 40;
@@ -140,15 +141,6 @@ static uint32_t hpos = 4;
 /** @brief vertical sync position */
 static uint32_t vpos = 3;
 
-/** @brief screen character columns (changed) */
-static uint32_t screen_w_changed;
-
-/** @brief screen character rows (changed) */
-static uint32_t screen_h_changed;
-
-/** @brief character pixel rows (changed) */
-static uint32_t char_h_changed;
-
 /** @brief horizontal sync position (last frame) */
 static uint32_t hpos_old;
 
@@ -162,10 +154,10 @@ static int32_t frame_w = 8 * SCREENW;
 static int32_t frame_h = 8 * SCREENH;
 
 /** @brief screen x offset */
-static int32_t screen_x = 8 * 3;
+static int32_t screen_x = FONT_W * 4;
 
 /** @brief screen y offset */
-static int32_t screen_y = 8 * 2;
+static int32_t screen_y = FONT_H * 3;
 
 #define	PORT_FF_CAS	(1<<0)
 #define	PORT_FF_BGRD	(1<<2)
@@ -251,7 +243,6 @@ static uint32_t cgenie_video_addr_changed(uint32_t chip, uint32_t frame_base_old
 
 static void video_text(void);
 static void video_graphics(void);
-static int cgenie_resize_ext(int32_t w, int32_t h);
 static void cgenie_frame(uint32_t param);
 static int cgenie_screen(void);
 static int cgenie_memory(void);
@@ -397,7 +388,7 @@ void sys_set_full_refresh(void)
 	dirty_all = (uint32_t)-1;
 }
 
-void sys_cpu_panel_init(void *bitmap)
+/*void sys_cpu_panel_init(void *bitmap)
 {
 	osd_bitmap_t *cpu_panel = (osd_bitmap_t *)bitmap;
 	int32_t x;
@@ -432,9 +423,9 @@ void sys_cpu_panel_init(void *bitmap)
 	x += 54;
 	osd_widget_alloc(cpu_panel, x, y, 52, 12, 0xbf, 0xbf, 0xbf, BT_STATIC, CPU_PC,  "PC: 0000");
 	x += 54;
-}
+}*/
 
-void sys_cpu_panel_update(void *bitmap)
+/*void sys_cpu_panel_update(void *bitmap)
 {
 	osd_bitmap_t *cpu_panel = (osd_bitmap_t *)bitmap;
 	osd_widget_text(cpu_panel, CPU_BC,  "BC: %04x", z80_get_reg(&z80, Z80_BC));
@@ -449,7 +440,7 @@ void sys_cpu_panel_update(void *bitmap)
 	osd_widget_text(cpu_panel, CPU_DE2, "DE' %04x", z80_get_reg(&z80, Z80_DE2));
 	osd_widget_text(cpu_panel, CPU_HL2, "HL' %04x", z80_get_reg(&z80, Z80_HL2));
 	osd_widget_text(cpu_panel, CPU_AF2, "AF' %04x", z80_get_reg(&z80, Z80_AF2));
-}
+}*/
 
 /** @brief mark a video RAM location dirty */
 static __inline void set_video_ram_dirty(uint32_t offset)
@@ -537,7 +528,8 @@ static void video_conflict(void)
 /** @brief set the video background colour */
 static void video_bgd(uint8_t r, uint8_t g, uint8_t b)
 {
-	pal_gfx[0] = pal_txt[C_BACKGROUND] = osd_rgb(r, g, b);
+	/*osd_align_colors_to_mode(&r, &g, &b);*/
+	color_gfx[0] = color_txt[C_BACKGROUND] = oss_bitmap_get_pix_val(frame, r, g, b, 255);
 	/* mark everything dirty */
 	dirty_all = (uint32_t)-1;
 }
@@ -849,10 +841,10 @@ static uint32_t cgenie_video_addr_changed(uint32_t chip, uint32_t frame_base_old
 static void video_text(void)
 {
 	uint32_t offs = mc6845_get_start(0);
-	uint32_t x, y, x0, y0, ct, ch, px;
+	uint32_t x, y, x0, y0, ct, ch;
 	uint32_t data;
 	uint32_t attr;
-	uint32_t pal2[2];
+	uint32_t color2[2];
 	mc6845_cursor_t cursor;
 
 	mc6845_get_cursor(0, &cursor);
@@ -861,29 +853,32 @@ static void video_text(void)
 	if (cursor.bottom >= char_h)
 		cursor.bottom = char_h - 1;
 
-	pal2[0] = pal_txt[C_BACKGROUND];
+	color2[0] = color_txt[C_BACKGROUND];
 	for (y = 0; y < screen_h; y++) {
-		y0 = screen_y + y * font_h;
+		y0 = screen_y + y * FONT_H;
 		for (x = 0; x < screen_w; x++, offs = (offs + 1) % VIDEO_RAM_SIZE) {
 			if (0 == get_video_ram_dirty(offs) &&
 				0 == get_colour_ram_dirty(offs))
 				continue;
-			x0 = screen_x + x * font_w;
+
+			/* draw charater */
+			x0 = screen_x + x * FONT_W;
 			res_video_ram_dirty(offs);
 			data = mem[VIDEO_RAM_BASE + offs];
 			data = data + font_base[data / 64];
 			attr = mem[COLOUR_RAM_BASE + offs % COLOUR_RAM_SIZE] % 16;
-			pal2[1] = pal_txt[attr];
-			osd_pattern(frame, font, x0, y0, data, 2, pal2, font_w, font_h);
+			color2[1] = color_txt[attr];
+			osd_font_blit(font, frame, color2, x0, y0, data, 1, 1);
+
+			/* draw hardware cursor */
 			if (0 == cursor.on)
 				continue;
 			if (offs != cursor.pos)
 				continue;
 			set_video_ram_dirty(offs);
-			ct = cursor.top * font_h / char_h;
-			ch = (cursor.bottom + 1 - cursor.top) * font_h / char_h;
-			px = osd_color(frame, osd_get_r(pal2[1]), osd_get_g(pal2[1]), osd_get_b(pal2[1]));
-			osd_fillrect(frame, x0, y0 + ct, font_w, ch, px);
+			ct = cursor.top * FONT_H / char_h;
+			ch = (cursor.bottom + 1 - cursor.top) * FONT_H / char_h;
+			osd_bitmap_fillrect(frame, x0, y0 + ct, FONT_W, ch, color2[1]);
 		}
 	}
 }
@@ -892,15 +887,9 @@ static void video_graphics(void)
 {
 	uint32_t offs = mc6845_get_start(0);
 	uint32_t x, y, x0, y0;
-	uint32_t w = font_w / 4;
-	uint32_t h = char_h * font_h / FONT_H;
-	uint32_t pal[4];
-	uint32_t data, i;
-
-	for (i = 0; i < 4; i++) {
-		data = pal_gfx[i];
-		pal[i] = osd_color(frame, osd_get_r(data), osd_get_g(data), osd_get_b(data));
-	}
+	uint32_t w = FONT_W / 4;
+	uint32_t h = char_h;
+	uint32_t data;
 
 	for (y = 0; y < screen_h * h; y += h) {
 		y0 = screen_y + y;
@@ -908,87 +897,45 @@ static void video_graphics(void)
 			if (0 == get_video_ram_dirty(offs))
 				continue;
 			res_video_ram_dirty(offs);
-			x0 = screen_x + x * font_w;
+			x0 = screen_x + x * FONT_W;
 			data = mem[VIDEO_RAM_BASE + offs];
-			osd_fillrect(frame, x0 + 0*w, y0, w, h, pal[(data >> 6) & 3]);
-			osd_fillrect(frame, x0 + 1*w, y0, w, h, pal[(data >> 4) & 3]);
-			osd_fillrect(frame, x0 + 2*w, y0, w, h, pal[(data >> 2) & 3]);
-			osd_fillrect(frame, x0 + 3*w, y0, w, h, pal[(data >> 0) & 3]);
+			osd_bitmap_fillrect(frame, x0 + 0*w, y0, w, h, color_gfx[(data >> 6) & 3]);
+			osd_bitmap_fillrect(frame, x0 + 1*w, y0, w, h, color_gfx[(data >> 4) & 3]);
+			osd_bitmap_fillrect(frame, x0 + 2*w, y0, w, h, color_gfx[(data >> 2) & 3]);
+			osd_bitmap_fillrect(frame, x0 + 3*w, y0, w, h, color_gfx[(data >> 0) & 3]);
 		}
 	}
-}
-
-static int cgenie_resize(int32_t w, int32_t h)
-{
-	int32_t hs = hpos == 71 ? -14 : hpos - 14;
-	int32_t vs = vpos - 5;
-	int32_t fw;
-	int32_t fh;
-
-	frame_w = w;
-	frame_h = h;
-	fw = w / SCREENW;
-	fh = h / SCREENH;
-	screen_x = hs * fw;
-	screen_y = vs * char_h * fh / FONT_H;
-
-	if (fw != font_w || fh != font_h) {
-		font_w = fw;
-		font_h = fh;
-
-		osd_bitmap_free(&font);
-		osd_bitmap_alloc(&font, font_w * 16, font_h * 24, 8);
-		osd_set_colors(font, pal_txt, 17);
-		osd_render_font(font,
-			chargen,	/* bitmap data */
-			0,		/* first code */
-			256 + 128,	/* count */
-			FONT_W,		/* font width */
-			FONT_H,		/* font height */
-			font_w,		/* scaled font width */
-			font_h,		/* scaled font height */
-			1,		/* line skew */
-			1,		/* bits per pixel */
-			NULL);		/* palette */
-	}
-	osd_set_colors(frame, pal_txt, 17);
-	osd_set_colors(NULL, pal_txt, 17);
-
-	dirty_all = (uint32_t)-1;
-	return 0;
-}
-
-static int cgenie_resize_ext(int32_t w, int32_t h)
-{
-	frame_redraw = 1;
-	return cgenie_resize(w, h);
 }
 
 static void cgenie_frame(uint32_t param)
 {
 	uint32_t ch, i, n, size, frame_base;
+	uint32_t screen_h_new, screen_w_new, char_h_new;
 
 	ay8910_update_stream();
 
 	osd_display_frequency((uint64_t)50.0 * cycles_this_frame);
 	cycles_this_frame = 0;
 
-	if (screen_h_changed != mc6845_get_char_lines(0)) {
-		screen_h_changed = mc6845_get_char_lines(0);
-		if (0 == screen_h_changed)
-			screen_h_changed = 1;
+	screen_h_new = mc6845_get_char_lines(0);
+	if (screen_h_new != screen_h) {
+		screen_h = screen_h_new;
+		if (0 == screen_h)
+			screen_h = 1;
 		frame_redraw = 1;
 	}
-	if (screen_w_changed != mc6845_get_char_columns(0)) {
-		screen_w_changed = mc6845_get_char_columns(0);
-		if (0 == screen_w_changed)
-			screen_w_changed = 1;
+	screen_w_new = mc6845_get_char_columns(0);
+	if (screen_w_new != screen_w) {
+		screen_w = screen_w_new;
+		if (0 == screen_w)
+			screen_w = 1;
 		frame_redraw = 1;
 	}
-	if (char_h_changed != mc6845_get_char_height(0)) {
-		char_h_changed = mc6845_get_char_height(0);
-		if (0 == char_h_changed)
-			char_h_changed = 1;
+	char_h_new = mc6845_get_char_height(0);
+	if (char_h_new != char_h) {
+		char_h = char_h_new;
+		if (0 == char_h)
+			char_h = 1;
 		frame_redraw = 1;
 	}
 
@@ -1000,10 +947,12 @@ static void cgenie_frame(uint32_t param)
 		vpos = 1;
 
 	if (frame_redraw || vpos != vpos_old || hpos != hpos_old) {
-		screen_h = screen_h_changed;
-		screen_w = screen_w_changed;
-		char_h = char_h_changed;
-		cgenie_resize(frame_w, frame_h);
+		int32_t hs = hpos == 71 ? -14 : hpos - 14;
+		int32_t vs = vpos - 5;
+
+		screen_x = hs * FONT_W;
+		screen_y = vs * char_h;
+		dirty_all = (uint32_t)-1;
 	}
 
 	frame_base = mc6845_get_start(0);
@@ -1014,17 +963,10 @@ static void cgenie_frame(uint32_t param)
 		if (0 == frame_redraw && 0 == get_font_ram_dirty(ch))
 			continue;
 		res_font_ram_dirty(ch);
-		osd_render_font(font,
-			&mem[FONT_RAM_BASE + FONT_H * ch],
-			256 + ch,	/* first code */
-			1,		/* count */
-			FONT_W,		/* font width */
-			FONT_H,		/* font height */
-			font_w,		/* scaled font width */
-			font_h,		/* scaled font height */
-			1,		/* skew */
-			1,		/* bits per pixel */
-			NULL);		/* palette */
+		osd_render_font(font, &mem[FONT_RAM_BASE + FONT_H * ch],
+			256 + ch, /* first code */
+			1,        /* count */
+			0);       /* not top aligned */
 		for (i = 0; i < size; i++) {
 			uint32_t o1 = (frame_base + i) % VIDEO_RAM_SIZE;
 			if (128 + ch != mem[VIDEO_RAM_BASE + o1])
@@ -1033,38 +975,33 @@ static void cgenie_frame(uint32_t param)
 		}
 	}
 
-	/* was at least set by cgenie_resize */
 	if (dirty_all) {
 		int32_t x, y, w, h;
-		uint32_t bg = osd_color(frame,
-			osd_get_r(pal_gfx[0]),
-			osd_get_g(pal_gfx[0]),
-			osd_get_b(pal_gfx[0]));
 		if (frame_redraw)
-			osd_fillrect(frame, 0, 0, frame_w, frame_h, bg);
-		/* clear only displayed screen in case geometry has not cheanged */
+			osd_bitmap_fillrect(frame, 0, 0, frame_w, frame_h, color_gfx[0]);
+		/* clear only displayed screen in case geometry has not changed */
 		else if (hpos == hpos_old && vpos == vpos_old) {
 			x = screen_x;
 			y = screen_y;
-			w = screen_w * font_w;
-			h = screen_h * char_h * font_h / FONT_H;
-			osd_fillrect(frame, x, y, w, h, bg);
+			w = screen_w * FONT_W;
+			h = screen_h * char_h;
+			osd_bitmap_fillrect(frame, x, y, w, h, color_gfx[0]);
 		}
 		/* clear only displayed screen + shadow in case screen has moved */
 		else {
 			x = screen_x;
 			if (hpos > hpos_old)
-				x -= (hpos - hpos_old) * font_w;
+				x -= (hpos - hpos_old) * FONT_W;
 			y = screen_y;
 			if (vpos > vpos_old)
-				y -= (vpos - vpos_old) * char_h * font_h / FONT_H;
-			w = screen_w * font_w;
+				y -= (vpos - vpos_old) * char_h;
+			w = screen_w * FONT_W;
 			if (hpos < hpos_old)
-				w += (hpos_old - hpos) * font_w;
-			h = screen_h * char_h * font_h / FONT_H;
+				w += (hpos_old - hpos) * FONT_W;
+			h = screen_h * char_h;
 			if (vpos < vpos_old)
-				h += (vpos_old - vpos) * char_h * font_h / FONT_H;
-			osd_fillrect(frame, x, y, w, h, bg);
+				h += (vpos_old - vpos) * char_h;
+			osd_bitmap_fillrect(frame, x, y, w, h, color_gfx[0]);
 		}
 	}
 
@@ -1086,7 +1023,6 @@ static void cgenie_frame(uint32_t param)
 
 	/* add flicker caused by accessing the character generator RAM */
 	if (screen_w > 0 && char_h > 0 && conflict_cnt > 0) {
-		uint32_t white = osd_color(frame, 255, 255, 255);
 		for (n = 0; n < conflict_cnt; n++) {
 			uint32_t pos = conflict_pos[n];
 			uint32_t x = (pos / 8) % screen_w;
@@ -1094,20 +1030,98 @@ static void cgenie_frame(uint32_t param)
 			uint32_t px = pos % 8;
 			uint32_t py = (pos / 8 / screen_w) % char_h;
 			uint32_t addr = mc6845_get_start(0) + y * screen_w + x;
-			uint32_t x0 = screen_x + x * font_w + font_w * px / 8;
-			uint32_t y0 = screen_y + y * font_h + font_h * py / char_h;
-			uint32_t w = font_w / 8;
-			uint32_t h = font_h / char_h;
+			uint32_t x0 = screen_x + x * FONT_W + FONT_W * px / 8;
+			uint32_t y0 = screen_y + y * FONT_H + FONT_H * py / char_h;
+			uint32_t w = FONT_W / 8;
+			uint32_t h = FONT_H / char_h;
 			if (y >= screen_h)
 				continue;
-			osd_fillrect(NULL, x0, y0, w, h, white);
-			osd_fillrect(frame, x0, y0, w, h, white);
+			osd_bitmap_fillrect(frame, x0, y0, w, h, color_white);
 			set_video_ram_dirty(addr);
 		}
 	}
 	conflict_cnt = 0;
 
 	stop = osd_update(osd_skip_next_frame());
+}
+
+static void cgenie_update_colors()
+{
+	uint8_t r, g, b;
+	r = 15; g = 15; b = 15;
+	osd_align_colors_to_mode(&r, &g, &b);
+	color_txt[C_GRAY       ] = oss_bitmap_get_pix_val(frame, r, g, b, 255);
+
+	r =  0; g = 48; b = 48;
+	osd_align_colors_to_mode(&r, &g, &b);
+	color_txt[C_CYAN       ] = oss_bitmap_get_pix_val(frame, r, g, b, 255);
+
+	r = 60; g = 0; b = 0;
+	osd_align_colors_to_mode(&r, &g, &b);
+	color_txt[C_RED        ] = oss_bitmap_get_pix_val(frame, r, g, b, 255);
+
+	r = 47; g = 47; b = 47;
+	osd_align_colors_to_mode(&r, &g, &b);
+	color_txt[C_WHITE      ] = oss_bitmap_get_pix_val(frame, r, g, b, 255);
+
+	r = 55; g = 55; b =  0;
+	osd_align_colors_to_mode(&r, &g, &b);
+	color_txt[C_YELLOW     ] = oss_bitmap_get_pix_val(frame, r, g, b, 255);
+
+	r =  0; g = 56; b =  0;
+	osd_align_colors_to_mode(&r, &g, &b);
+	color_txt[C_GREEN      ] = oss_bitmap_get_pix_val(frame, r, g, b, 255);
+
+	r = 42; g = 32; b =  0;
+	osd_align_colors_to_mode(&r, &g, &b);
+	color_txt[C_ORANGE     ] = oss_bitmap_get_pix_val(frame, r, g, b, 255);
+
+	r = 63; g = 63; b =  0;
+	osd_align_colors_to_mode(&r, &g, &b);
+	color_txt[C_LIGHTYELLOW] = oss_bitmap_get_pix_val(frame, r, g, b, 255);
+
+	r =  0; g =  0; b = 48;
+	osd_align_colors_to_mode(&r, &g, &b);
+	color_txt[C_BLUE       ] = oss_bitmap_get_pix_val(frame, r, g, b, 255);
+
+	r =  0; g = 24; b = 63;
+	osd_align_colors_to_mode(&r, &g, &b);
+	color_txt[C_LIGHTBLUE    ] = oss_bitmap_get_pix_val(frame, r, g, b, 255);
+
+	r = 60; g =  0; b = 38;
+	osd_align_colors_to_mode(&r, &g, &b);
+	color_txt[C_PINK         ] = oss_bitmap_get_pix_val(frame, r, g, b, 255);
+
+	r = 38; g =  0; b = 60;
+	osd_align_colors_to_mode(&r, &g, &b);
+	color_txt[C_PURPLE       ] = oss_bitmap_get_pix_val(frame, r, g, b, 255);
+
+	r = 31; g = 31; b = 31;
+	osd_align_colors_to_mode(&r, &g, &b);
+	color_txt[C_LIGHTGRAY    ] = oss_bitmap_get_pix_val(frame, r, g, b, 255);
+
+	r =  0; g = 63; b = 63;
+	osd_align_colors_to_mode(&r, &g, &b);
+	color_txt[C_LIGHTCYAN    ] = oss_bitmap_get_pix_val(frame, r, g, b, 255);
+
+	r = 58; g =  0; b = 58;
+	osd_align_colors_to_mode(&r, &g, &b);
+	color_txt[C_MAGENTA      ] = oss_bitmap_get_pix_val(frame, r, g, b, 255);
+
+	r = 63; g = 63; b = 63;
+	osd_align_colors_to_mode(&r, &g, &b);
+	color_txt[C_BRIGHTWHITE  ] = oss_bitmap_get_pix_val(frame, r, g, b, 255);
+
+	r =  0; g =  0; b =  0;
+	/* do not align background / would be very grey */
+	color_txt[C_BACKGROUND  ] = oss_bitmap_get_pix_val(frame, r, g, b, 255);
+
+	color_gfx[0] = color_txt[C_BACKGROUND ];
+	color_gfx[1] = color_txt[C_BLUE       ];
+	color_gfx[2] = color_txt[C_ORANGE     ];
+	color_gfx[3] = color_txt[C_GREEN      ];
+
+	dirty_all = (uint32_t)-1;
 }
 
 static int cgenie_screen(void)
@@ -1144,46 +1158,18 @@ static int cgenie_screen(void)
 		return -1;
 
 	mc6845_init(1, &mc6845);
-	frame_w = SCREENW * font_w;
-	frame_h = SCREENH * font_h;
-	osd_set_display(frame_w, frame_h);
-	frame_w *= osd_get_scale();
-	frame_h *= osd_get_scale();
-	rc = osd_open_display(frame_w, frame_h, "Colour Genie EG2000");
+	frame_w = SCREENW * FONT_W;
+	frame_h = SCREENH * FONT_H;
+	rc = osd_open_display(frame_w, frame_h, "Colour Genie EG2000", cgenie_update_colors);
 	if (0 != rc) {
 		fprintf(stderr, "osd_open_display(%d,%d,...) failed\n",
 			frame_w, frame_h);
 		return -1;
 	}
-	font_w = FONT_W * osd_get_scale();
-	font_h = FONT_H * osd_get_scale();
-	osd_bitmap_alloc(&font, font_w * 16, font_h * 24, 8);
+	osd_font_alloc(&font, 128*3, FONT_W, FONT_H, FONT_DEPTH_1BPP);
 
-	pal_txt[C_GRAY       ] = osd_rgb(15*4,15*4,15*4);
-	pal_txt[C_CYAN       ] = osd_rgb(0*4,48*4,48*4);
-	pal_txt[C_RED        ] = osd_rgb(60*4, 0*4, 0*4);
-	pal_txt[C_WHITE      ] = osd_rgb(47*4,47*4,47*4);
-	pal_txt[C_YELLOW     ] = osd_rgb(55*4,55*4, 0*4);
-	pal_txt[C_GREEN      ] = osd_rgb(0*4,56*4, 0*4);
-	pal_txt[C_ORANGE     ] = osd_rgb(42*4,32*4, 0*4);
-	pal_txt[C_LIGHTYELLOW] = osd_rgb(63*4,63*4, 0*4);
-	pal_txt[C_BLUE       ] = osd_rgb( 0*4, 0*4,48*4);
-	pal_txt[C_LIGHTBLUE  ] = osd_rgb( 0*4,24*4,63*4);
-	pal_txt[C_PINK       ] = osd_rgb(60*4, 0*4,38*4);
-	pal_txt[C_PURPLE     ] = osd_rgb(38*4, 0*4,60*4);
-	pal_txt[C_LIGHTGRAY  ] = osd_rgb(31*4,31*4,31*4);
-	pal_txt[C_LIGHTCYAN  ] = osd_rgb( 0*4,63*4,63*4);
-	pal_txt[C_MAGENTA    ] = osd_rgb(58*4, 0*4,58*4);
-	pal_txt[C_BRIGHTWHITE] = osd_rgb(63*4,63*4,63*4);
-	pal_txt[C_BACKGROUND ] = osd_rgb(   0,   0,   0);
-	osd_set_colors(font, pal_txt, 17);
-	osd_set_colors(frame, pal_txt, 17);
-	osd_set_colors(NULL, pal_txt, 17);
-
-	pal_gfx[0] = pal_txt[C_BACKGROUND ];
-	pal_gfx[1] = pal_txt[C_BLUE       ];
-	pal_gfx[2] = pal_txt[C_ORANGE     ];
-	pal_gfx[3] = pal_txt[C_GREEN      ];
+	cgenie_update_colors();
+	color_white = oss_bitmap_get_pix_val(frame, 255, 255, 255, 255);
 
 	font_base[0] = 0x00;
 	font_base[1] = 0x00;
@@ -1191,17 +1177,10 @@ static int cgenie_screen(void)
 	font_base[3] = 0x00;
 
 	osd_render_font(font,
-		chargen,	/* bitmap data */
-		0,		/* first code */
-		256,		/* count */
-		FONT_W,		/* font width */
-		FONT_H,		/* font height */
-		font_w,		/* scaled font width */
-		font_h,		/* scaled font height */
-		1,		/* line skew */
-		1,		/* bits per pixel */
-		NULL);		/* palette */
-
+		chargen, /* bitmap data */
+		0,       /* first code */
+		256,     /* count */
+		0);      /* not top aligned */
 	return 0;
 }
 
@@ -1301,7 +1280,7 @@ int main(int argc, char **argv)
 		if (!strcmp(argv[i], "-d"))
 			dumpmem = 1;
 
-	if (osd_init(cgenie_resize_ext, NULL, cgenie_key_dn, cgenie_key_up, argc, argv))
+	if (osd_init(NULL, cgenie_key_dn, cgenie_key_up, argc, argv))
 		return 1;
 	osd_set_refresh_rate(50.0);
 
@@ -1322,8 +1301,8 @@ int main(int argc, char **argv)
 	cgenie_cas_init();
 	cgenie_fdc_init();
 	frame_redraw = 1;
-	frame_timer = tmr_alloc(cgenie_frame, tmr_double_to_time(TIME_IN_MSEC(20)),
-		0, tmr_double_to_time(TIME_IN_MSEC(20)));
+	frame_timer = tmr_alloc(cgenie_frame, tmr_double_to_time(TIME_IN_HZ(50)),
+		0, tmr_double_to_time(TIME_IN_HZ(50)));
 	clock_timer = tmr_alloc(cgenie_clock, tmr_double_to_time(TIME_IN_MSEC(25)),
 		0, tmr_double_to_time(TIME_IN_MSEC(25)));
 	scan_timer = tmr_alloc(cgenie_scan, tmr_double_to_time(TIME_IN_HZ(7200)),
@@ -1337,9 +1316,9 @@ int main(int argc, char **argv)
 		fwrite(mem, 1, MEMSIZE, fp);
 		fclose(fp);
 	}
-
 	cgenie_fdc_stop();
 	cgenie_cas_stop();
 	osd_exit();
+	osd_font_free(&font);
 	return 0;
 }

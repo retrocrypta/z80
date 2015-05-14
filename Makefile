@@ -4,7 +4,7 @@ VERSION_MINOR=	3
 VERSION_MICRO=	1
 VERSION=	$(VERSION_MAJOR).$(VERSION_MINOR).$(VERSION_MICRO)
 
-DEBUG?=		0
+DEBUG?=		1
 
 ifeq ($(shell uname -o 2>/dev/null),Cygwin)
 WINDOWS?=	1
@@ -24,11 +24,11 @@ BIN:=		bin
 INCLUDES:=	-I./include -I/usr/local/include -I/usr/pkg/include
 LIBS:=		-lz
 
-CFLAGS+=	-DDEBUG=$(DEBUG)
+#CFLAGS+=	-DDEBUG=$(DEBUG)
 
 # SDL libraries and cflags
-SDL_LIB:=	$(shell sdl-config --libs)
-SDL_INC:=	$(shell sdl-config --cflags)
+SDL_LIB:=	$(shell sdl2-config --libs)
+SDL_INC:=	$(shell sdl2-config --cflags)
 
 # Expat libraries and cflags
 EXPAT_LIB:=	-L/usr/pkg/lib -lexpat
@@ -49,18 +49,20 @@ CFLAGS+= 	-O2 -fno-strict-aliasing -fomit-frame-pointer -Wall $(SDL_INC) $(INCLU
 LDFLAGS+=	-s
 endif
 
+OSD_OBJS= $(OBJ)/osd.o $(OBJ)/osd_bitmap.o $(OBJ)/osd_font.o $(OBJ)/osd_gui.o
+
 TRS80_OBJS=	$(OBJ)/trs80/main.o $(OBJ)/trs80/kbd.o $(OBJ)/trs80/fdc.o $(OBJ)/trs80/cas.o \
 		$(OBJ)/system.o $(OBJ)/timer.o $(OBJ)/image.o \
-		$(OBJ)/blit.o $(OBJ)/png.o $(OBJ)/mng.o \
 		$(OBJ)/floppy.o $(OBJ)/crc.o $(OBJ)/wd179x.o \
-		$(OBJ)/z80.o $(OBJ)/z80dasm.o $(OBJ)/osd.o
+		$(OBJ)/z80.o $(OBJ)/z80dasm.o \
+		$(OSD_OBJS)
 
 CGENIE_OBJS=	$(OBJ)/cgenie/main.o $(OBJ)/cgenie/kbd.o $(OBJ)/cgenie/fdc.o $(OBJ)/cgenie/cas.o\
 		$(OBJ)/system.o $(OBJ)/timer.o $(OBJ)/image.o \
-		$(OBJ)/blit.o $(OBJ)/png.o $(OBJ)/mng.o \
 		$(OBJ)/floppy.o $(OBJ)/crc.o $(OBJ)/wd179x.o \
 		$(OBJ)/mc6845.o $(OBJ)/ay8910.o \
-		$(OBJ)/z80.o $(OBJ)/z80dasm.o $(OBJ)/osd.o
+		$(OBJ)/z80.o $(OBJ)/z80dasm.o \
+		$(OSD_OBJS)
 
 DMKTOOL_OBJS=	$(OBJ)/dmktool.o
 
@@ -72,11 +74,10 @@ CMD2CAS_OBJS=	$(OBJ)/cmd2cas.o
 
 DZ80_OBJS=	$(OBJ)/dz80.o $(OBJ)/z80dasm.o
 
-MNGVIEW_OBJS=	$(OBJ)/mngview.o $(OBJ)/blit.o $(OBJ)/png.o $(OBJ)/mng.o
 
-all:	.dirs $(BIN)/trs80$(EXE) $(BIN)/cgenie$(EXE) $(BIN)/dmktool$(EXE) \
+all:	.dirs $(BIN)/cgenie$(EXE) $(BIN)/trs80$(EXE) $(BIN)/dmktool$(EXE) \
 	$(BIN)/cas2xml$(EXE) $(BIN)/xml2cas$(EXE) \
-	$(BIN)/cmd2cas$(EXE) $(BIN)/dz80$(EXE) $(BIN)/mngview$(EXE)
+	$(BIN)/cmd2cas$(EXE) $(BIN)/dz80$(EXE)
 
 .dirs:
 	@mkdir -p $(OBJ) 2>/dev/null
@@ -111,10 +112,6 @@ $(BIN)/cmd2cas$(EXE):	$(CMD2CAS_OBJS)
 $(BIN)/dz80$(EXE):	$(DZ80_OBJS)
 	@echo "==> linking $@"
 	$(LD) $(LDFLAGS) -o $@ $^ $(LIBS)
-
-$(BIN)/mngview$(EXE):	$(MNGVIEW_OBJS)
-	@echo "==> linking $@"
-	$(LD) $(LDFLAGS) -o $@ $^ $(SDL_LIB) $(LIBS)
 
 $(OBJ)/%.o:	$(SRC)/%.c
 	@echo "==> compiling $@"
