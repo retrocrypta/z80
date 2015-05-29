@@ -1,4 +1,4 @@
-* at maximized/fullscreen window: vertical black lines between pixels in FGR mode
+* tearing when changing background colour and moving window / test cargo
 * sdl2 port:
     * video: render to surface unstretched pixel / let gpu stretch to window size
     * sound: render sound in the sound task make use of atomic functions
