@@ -6,6 +6,7 @@
  * Copyright by Juergen Buchmueller <pullmoll@t-online.de>
  *
  ***************************************************************************************/
+#include <SDL_keycode.h>
 #include "cgenie/kbd.h"
 
 /** @brief keyboard matrix */
@@ -267,125 +268,124 @@ void cgenie_key_dn(void *cookie, osd_key_t *key)
 	printf("keydn: %s sym:%#x '%c' ",
 		osd_key_name(key), key->sym, PRINTABLE(key->sym));
 #endif
-	if (key->flags & OSD_KEY_UNICODE) {
-		switch (key->sym) {
-		case   8: key_dn(key, K_LEFT); break;
-		case   9: key_dn(key, K_RIGHT); break;
-		case  13: key_dn(key, K_ENTER); break;
-		case  27: key_dn(key, K_BREAK); break;
-		case  32: key_dn(key, K_SPACE); break;
-		case '!': key_dn(key, K_1 | K_SHIFTED); break;
-		case '"': key_dn(key, K_2 | K_SHIFTED); break;
-		case '#': key_dn(key, K_3 | K_SHIFTED); break;
-		case '$': key_dn(key, K_4 | K_SHIFTED); break;
-		case '%': key_dn(key, K_5 | K_SHIFTED); break;
-		case '&': key_dn(key, K_6 | K_SHIFTED); break;
-		case  39: key_dn(key, K_7 | K_SHIFTED); break;
-		case '(': key_dn(key, K_8 | K_SHIFTED); break;
-		case ')': key_dn(key, K_9 | K_SHIFTED); break;
-		case '*': key_dn(key, K_COLON | K_SHIFTED); break;
-		case '+': key_dn(key, K_SEMICOLON | K_SHIFTED); break;
-		case ',': key_dn(key, K_COMMA); break;
-		case '-': key_dn(key, K_MINUS); break;
-		case '.': key_dn(key, K_PERIOD); break;
-		case '/': key_dn(key, K_SLASH); break;
-		case '0': key_dn(key, K_0); break;
-		case '1': key_dn(key, K_1); break;
-		case '2': key_dn(key, K_2); break;
-		case '3': key_dn(key, K_3); break;
-		case '4': key_dn(key, K_4); break;
-		case '5': key_dn(key, K_5); break;
-		case '6': key_dn(key, K_6); break;
-		case '7': key_dn(key, K_7); break;
-		case '8': key_dn(key, K_8); break;
-		case '9': key_dn(key, K_9); break;
-		case ':': key_dn(key, K_COLON); break;
-		case ';': key_dn(key, K_SEMICOLON); break;
-		case '<': key_dn(key, K_COMMA | K_SHIFTED); break;
-		case '=': key_dn(key, K_MINUS | K_SHIFTED); break;
-		case '>': key_dn(key, K_PERIOD | K_SHIFTED); break;
-		case '?': key_dn(key, K_SLASH | K_SHIFTED); break;
-		case '@': key_dn(key, K_AT); break;
-		case 'A': key_dn(key, K_A | K_SHIFTED); break;
-		case 'B': key_dn(key, K_B | K_SHIFTED); break;
-		case 'C': key_dn(key, K_C | K_SHIFTED); break;
-		case 'D': key_dn(key, K_D | K_SHIFTED); break;
-		case 'E': key_dn(key, K_E | K_SHIFTED); break;
-		case 'F': key_dn(key, K_F | K_SHIFTED); break;
-		case 'G': key_dn(key, K_G | K_SHIFTED); break;
-		case 'H': key_dn(key, K_H | K_SHIFTED); break;
-		case 'I': key_dn(key, K_I | K_SHIFTED); break;
-		case 'J': key_dn(key, K_J | K_SHIFTED); break;
-		case 'K': key_dn(key, K_K | K_SHIFTED); break;
-		case 'L': key_dn(key, K_L | K_SHIFTED); break;
-		case 'M': key_dn(key, K_M | K_SHIFTED); break;
-		case 'N': key_dn(key, K_N | K_SHIFTED); break;
-		case 'O': key_dn(key, K_O | K_SHIFTED); break;
-		case 'P': key_dn(key, K_P | K_SHIFTED); break;
-		case 'Q': key_dn(key, K_Q | K_SHIFTED); break;
-		case 'R': key_dn(key, K_R | K_SHIFTED); break;
-		case 'S': key_dn(key, K_S | K_SHIFTED); break;
-		case 'T': key_dn(key, K_T | K_SHIFTED); break;
-		case 'U': key_dn(key, K_U | K_SHIFTED); break;
-		case 'V': key_dn(key, K_V | K_SHIFTED); break;
-		case 'W': key_dn(key, K_W | K_SHIFTED); break;
-		case 'X': key_dn(key, K_X | K_SHIFTED); break;
-		case 'Y': key_dn(key, K_Y | K_SHIFTED); break;
-		case 'Z': key_dn(key, K_Z | K_SHIFTED); break;
-		case '[': key_dn(key, K_LEFTBRACKET); break;
-		case '\\': key_dn(key, K_BACKSLASH); break;
-		case ']': key_dn(key, K_RIGHTBRACKET); break;
-		case '^': key_dn(key, K_CARET); break;
-		case '_': key_dn(key, K_UNDERSCORE); break;
-		case '`': key_dn(key, K_AT | K_SHIFTED); break;
-		case 'a': key_dn(key, K_A); break;
-		case 'b': key_dn(key, K_B); break;
-		case 'c': key_dn(key, K_C); break;
-		case 'd': key_dn(key, K_D); break;
-		case 'e': key_dn(key, K_E); break;
-		case 'f': key_dn(key, K_F); break;
-		case 'g': key_dn(key, K_G); break;
-		case 'h': key_dn(key, K_H); break;
-		case 'i': key_dn(key, K_I); break;
-		case 'j': key_dn(key, K_J); break;
-		case 'k': key_dn(key, K_K); break;
-		case 'l': key_dn(key, K_L); break;
-		case 'm': key_dn(key, K_M); break;
-		case 'n': key_dn(key, K_N); break;
-		case 'o': key_dn(key, K_O); break;
-		case 'p': key_dn(key, K_P); break;
-		case 'q': key_dn(key, K_Q); break;
-		case 'r': key_dn(key, K_R); break;
-		case 's': key_dn(key, K_S); break;
-		case 't': key_dn(key, K_T); break;
-		case 'u': key_dn(key, K_U); break;
-		case 'v': key_dn(key, K_V); break;
-		case 'w': key_dn(key, K_W); break;
-		case 'x': key_dn(key, K_X); break;
-		case 'y': key_dn(key, K_Y); break;
-		case 'z': key_dn(key, K_Z); break;
-		case '{': key_dn(key, K_LEFTBRACKET | K_SHIFTED); break;
-		case '|': key_dn(key, K_BACKSLASH | K_SHIFTED); break;
-		case '}': key_dn(key, K_RIGHTBRACKET | K_SHIFTED); break;
-		case '~': key_dn(key, K_CARET | K_SHIFTED); break;
-		case 127: key_dn(key, K_UNDERSCORE | K_SHIFTED); break;
-		case 223: key_dn(key, K_UNDERSCORE); break; /* szlig */
-		case 228: key_dn(key, K_BACKSLASH); break; /* auml */
-		case 246: key_dn(key, K_RIGHTBRACKET); break; /* ouml */
-		case 252: key_dn(key, K_CARET); break; /* uuml */
-		default:
-			/*if (key->sym)
-				printf("sym: %d (%#x) %s\n",
-					key->sym, key->sym, osd_key_name(key));*/
-			goto lookup;
-		}
-#if	DUMP_KEYCODE
-		printf("%02x %02x %02x %02x %02x %02x %02x %02x\n",
-			keymap[0], keymap[1], keymap[2], keymap[3],
-			keymap[4], keymap[5], keymap[6], keymap[7]);
-#endif
-		return;
+	switch (key->sym) {
+	case   8: key_dn(key, K_LEFT); break;
+	case   9: key_dn(key, K_RIGHT); break;
+	case  13: key_dn(key, K_ENTER); break;
+	case  27: key_dn(key, K_BREAK); break;
+	case  32: key_dn(key, K_SPACE); break;
+	case '!': key_dn(key, K_1 | K_SHIFTED); break;
+	case '"': key_dn(key, K_2 | K_SHIFTED); break;
+	case '#': key_dn(key, K_3 | K_SHIFTED); break;
+	case '$': key_dn(key, K_4 | K_SHIFTED); break;
+	case '%': key_dn(key, K_5 | K_SHIFTED); break;
+	case '&': key_dn(key, K_6 | K_SHIFTED); break;
+	case  39: key_dn(key, K_7 | K_SHIFTED); break;
+	case '(': key_dn(key, K_8 | K_SHIFTED); break;
+	case ')': key_dn(key, K_9 | K_SHIFTED); break;
+	case '*': key_dn(key, K_COLON | K_SHIFTED); break;
+	case '+': key_dn(key, K_SEMICOLON | K_SHIFTED); break;
+	case ',': key_dn(key, K_COMMA); break;
+	case '-': key_dn(key, K_MINUS); break;
+	case '.': key_dn(key, K_PERIOD); break;
+	case '/': key_dn(key, K_SLASH); break;
+	case '0': key_dn(key, K_0); break;
+	case '1': key_dn(key, K_1); break;
+	case '2': key_dn(key, K_2); break;
+	case '3': key_dn(key, K_3); break;
+	case '4': key_dn(key, K_4); break;
+	case '5': key_dn(key, K_5); break;
+	case '6': key_dn(key, K_6); break;
+	case '7': key_dn(key, K_7); break;
+	case '8': key_dn(key, K_8); break;
+	case '9': key_dn(key, K_9); break;
+	case ':': key_dn(key, K_COLON); break;
+	case ';': key_dn(key, K_SEMICOLON); break;
+	case '<': key_dn(key, K_COMMA | K_SHIFTED); break;
+	case '=': key_dn(key, K_MINUS | K_SHIFTED); break;
+	case '>': key_dn(key, K_PERIOD | K_SHIFTED); break;
+	case '?': key_dn(key, K_SLASH | K_SHIFTED); break;
+	case '@': key_dn(key, K_AT); break;
+	case 'A': key_dn(key, K_A | K_SHIFTED); break;
+	case 'B': key_dn(key, K_B | K_SHIFTED); break;
+	case 'C': key_dn(key, K_C | K_SHIFTED); break;
+	case 'D': key_dn(key, K_D | K_SHIFTED); break;
+	case 'E': key_dn(key, K_E | K_SHIFTED); break;
+	case 'F': key_dn(key, K_F | K_SHIFTED); break;
+	case 'G': key_dn(key, K_G | K_SHIFTED); break;
+	case 'H': key_dn(key, K_H | K_SHIFTED); break;
+	case 'I': key_dn(key, K_I | K_SHIFTED); break;
+	case 'J': key_dn(key, K_J | K_SHIFTED); break;
+	case 'K': key_dn(key, K_K | K_SHIFTED); break;
+	case 'L': key_dn(key, K_L | K_SHIFTED); break;
+	case 'M': key_dn(key, K_M | K_SHIFTED); break;
+	case 'N': key_dn(key, K_N | K_SHIFTED); break;
+	case 'O': key_dn(key, K_O | K_SHIFTED); break;
+	case 'P': key_dn(key, K_P | K_SHIFTED); break;
+	case 'Q': key_dn(key, K_Q | K_SHIFTED); break;
+	case 'R': key_dn(key, K_R | K_SHIFTED); break;
+	case 'S': key_dn(key, K_S | K_SHIFTED); break;
+	case 'T': key_dn(key, K_T | K_SHIFTED); break;
+	case 'U': key_dn(key, K_U | K_SHIFTED); break;
+	case 'V': key_dn(key, K_V | K_SHIFTED); break;
+	case 'W': key_dn(key, K_W | K_SHIFTED); break;
+	case 'X': key_dn(key, K_X | K_SHIFTED); break;
+	case 'Y': key_dn(key, K_Y | K_SHIFTED); break;
+	case 'Z': key_dn(key, K_Z | K_SHIFTED); break;
+	case '[': key_dn(key, K_LEFTBRACKET); break;
+	case '\\': key_dn(key, K_BACKSLASH); break;
+	case ']': key_dn(key, K_RIGHTBRACKET); break;
+	case '^': key_dn(key, K_CARET); break;
+	case '_': key_dn(key, K_UNDERSCORE); break;
+	case '`': key_dn(key, K_AT | K_SHIFTED); break;
+	case 'a': key_dn(key, K_A); break;
+	case 'b': key_dn(key, K_B); break;
+	case 'c': key_dn(key, K_C); break;
+	case 'd': key_dn(key, K_D); break;
+	case 'e': key_dn(key, K_E); break;
+	case 'f': key_dn(key, K_F); break;
+	case 'g': key_dn(key, K_G); break;
+	case 'h': key_dn(key, K_H); break;
+	case 'i': key_dn(key, K_I); break;
+	case 'j': key_dn(key, K_J); break;
+	case 'k': key_dn(key, K_K); break;
+	case 'l': key_dn(key, K_L); break;
+	case 'm': key_dn(key, K_M); break;
+	case 'n': key_dn(key, K_N); break;
+	case 'o': key_dn(key, K_O); break;
+	case 'p': key_dn(key, K_P); break;
+	case 'q': key_dn(key, K_Q); break;
+	case 'r': key_dn(key, K_R); break;
+	case 's': key_dn(key, K_S); break;
+	case 't': key_dn(key, K_T); break;
+	case 'u': key_dn(key, K_U); break;
+	case 'v': key_dn(key, K_V); break;
+	case 'w': key_dn(key, K_W); break;
+	case 'x': key_dn(key, K_X); break;
+	case 'y': key_dn(key, K_Y); break;
+	case 'z': key_dn(key, K_Z); break;
+	case '{': key_dn(key, K_LEFTBRACKET | K_SHIFTED); break;
+	case '|': key_dn(key, K_BACKSLASH | K_SHIFTED); break;
+	case '}': key_dn(key, K_RIGHTBRACKET | K_SHIFTED); break;
+	case '~': key_dn(key, K_CARET | K_SHIFTED); break;
+	case 127: key_dn(key, K_UNDERSCORE | K_SHIFTED); break;
+	case 223: key_dn(key, K_UNDERSCORE); break; /* szlig */
+	case 228: key_dn(key, K_BACKSLASH); break; /* auml */
+	case 246: key_dn(key, K_RIGHTBRACKET); break; /* ouml */
+	case 252: key_dn(key, K_CARET); break; /* uuml */
+	default:
+		/*if (key->sym)
+			printf("sym: %d (%#x) %s\n",
+				key->sym, key->sym, osd_key_name(key));*/
+		goto lookup;
 	}
+#if	DUMP_KEYCODE
+	printf("%02x %02x %02x %02x %02x %02x %02x %02x\n",
+		keymap[0], keymap[1], keymap[2], keymap[3],
+		keymap[4], keymap[5], keymap[6], keymap[7]);
+#endif
+	return;
+
 lookup:
 	/* find non-unicode keyboard symbols in the lookup table */
 	for (i = 0; i < sizeof(map)/sizeof(map[0]); i++) {

@@ -33,8 +33,6 @@ extern void osd_stop_audio_stream(void);
 extern uint32_t osd_update_audio_stream(int16_t *buffer);
 
 /* KEYBOARD interface */
-/* Note: KMOD_RSHIFT is used as OSD key, too */
-#define	KMOD_SHIFT (KMOD_LSHIFT|KMOD_RSHIFT)
 #define	KMOD_CTRL (KMOD_LCTRL|KMOD_RCTRL)
 #define	KMOD_ALT (KMOD_LALT|KMOD_RALT)
 #define	KMOD_META (KMOD_LMETA|KMOD_RMETA)
@@ -45,8 +43,6 @@ extern uint32_t osd_update_audio_stream(int16_t *buffer);
 #define	OSD_KEY_UNICODE		(1<<3)
 
 typedef struct osd_key_s {
-	uint32_t flags;
-	uint32_t scancode;
 	uint32_t sym;
 	uint32_t mod;
 }	osd_key_t;

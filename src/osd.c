@@ -654,11 +654,11 @@ int32_t osd_update(int32_t skip_this_frame)
 
 		case SDL_KEYDOWN:
 			osd_keys(&ev.key);
-			ev.key.keysym.mod &= ~KMOD_RSHIFT;
-			key.flags = OSD_KEY_SCANCODE | OSD_KEY_SYM | OSD_KEY_MOD | OSD_KEY_UNICODE;
-			key.scancode = ev.key.keysym.scancode;
 			key.sym = ev.key.keysym.sym;
 			key.mod = ev.key.keysym.mod;
+			if ((key.mod & (KMOD_LSHIFT | KMOD_RSHIFT) != 0) &&
+				key.sym >= 'a' && key.sym <= 'z')
+				key.sym -= 32;
 			if (keydn_osd_local) {
 				(*keydn_osd_local)(cookie_local, &key);
 			} else if (keydn_callback) {
@@ -667,11 +667,11 @@ int32_t osd_update(int32_t skip_this_frame)
 			break;
 
 		case SDL_KEYUP:
-			ev.key.keysym.mod &= ~KMOD_RSHIFT;
-			key.flags = OSD_KEY_SCANCODE | OSD_KEY_SYM | OSD_KEY_MOD | OSD_KEY_UNICODE;
-			key.scancode = ev.key.keysym.scancode;
 			key.sym = ev.key.keysym.sym;
 			key.mod = ev.key.keysym.mod;
+			if ((key.mod & (KMOD_LSHIFT | KMOD_RSHIFT) != 0) &&
+				key.sym >= 'a' && key.sym <= 'z')
+				key.sym -= 32;
 			if (keyup_osd_local) {
 				(*keyup_osd_local)(cookie_local, &key);
 			} else if (keyup_callback) {
