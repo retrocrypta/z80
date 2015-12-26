@@ -22,7 +22,7 @@ SRC:=		src
 OBJ:=		obj
 BIN:=		bin
 INCLUDES:=	-I./include -I/usr/local/include -I/usr/pkg/include
-LIBS:=		-L/usr/lib -lz
+LIBS:=		-lz
 
 CFLAGS+=	-DDEBUG=$(DEBUG)
 
