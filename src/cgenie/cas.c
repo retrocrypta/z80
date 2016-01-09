@@ -11,7 +11,7 @@
 #define CAS_HEADER "Colour Genie - Virtual Tape File"
 #define	BUFF_SIZE	65536
 
-#define	TIMING_CONST	7400
+#define	TIMING_CONST	5500
 
 #if	CAS_DEBUG
 #define	LL	3
