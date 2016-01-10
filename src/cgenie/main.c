@@ -1326,8 +1326,8 @@ int main(int argc, char **argv)
 		0, tmr_double_to_time(TIME_IN_MSEC(20)));
 	clock_timer = tmr_alloc(cgenie_clock, tmr_double_to_time(TIME_IN_MSEC(25)),
 		0, tmr_double_to_time(TIME_IN_MSEC(25)));
-	scan_timer = tmr_alloc(cgenie_scan, tmr_double_to_time(TIME_IN_HZ(8000)),
-		0, tmr_double_to_time(TIME_IN_HZ(8000)));
+	scan_timer = tmr_alloc(cgenie_scan, tmr_double_to_time(TIME_IN_HZ(7200)),
+		0, tmr_double_to_time(TIME_IN_HZ(7200)));
 
 	while (!stop)
 		tmr_run_cpu(cpu, 2216800.0);
