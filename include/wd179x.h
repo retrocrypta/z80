@@ -34,7 +34,7 @@ enum {
 	WD_TYPE_177X = 0,
 	WD_TYPE_179X = 1,
 	WD_TYPE_MB8877 = 1	/* duplicate constant until this is implemented */
-}	WD_TYPE;
+};
 
 
 typedef struct ifc_wd179x_s {
